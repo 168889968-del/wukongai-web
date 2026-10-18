@@ -34,13 +34,19 @@ swapon "$SWAPF"
 free -h | head -3
 
 echo "[4/5] 安装依赖并编译，需要 10 到 20 分钟，看到 built in 就是编译完了，请耐心等待 ..."
-docker run --rm -e NODE_ENV=development -v /tmp/wkbuild:/app -w /app oven/bun:1 sh -c "(bun install --frozen-lockfile || bun install) && NODE_ENV=production bun run build" 2>&1 | tee /tmp/wkbuild.log | grep --line-buffered -E "installed|Rsbuild|build started|built in|error" ; test "${PIPESTATUS[0]}" -eq 0 || {
+set +e
+docker run --rm -e NODE_ENV=development -v /tmp/wkbuild:/app -w /app oven/bun:1 \
+  sh -c "(bun install --frozen-lockfile || bun install) && NODE_ENV=production bun run build" 2>&1 \
+  | tee /tmp/wkbuild.log | grep --line-buffered -E "installed|Rsbuild|build started|built in|error"
+BUILD_RC=${PIPESTATUS[0]}
+set -e
+if [ "$BUILD_RC" -ne 0 ]; then
   echo
   tail -n 40 /tmp/wkbuild.log
   echo
   echo "===== 编译失败，网站没有任何改动 BUILD_FAILED ====="
   exit 1
-}
+fi
 test -f /tmp/wkbuild/dist/index.html
 
 echo "[5/5] 替换网站文件 ..."
