@@ -265,7 +265,7 @@ export function Footer(props: FooterProps) {
               </span>
             </Link>
             <p className='text-muted-foreground/60 mt-3 max-w-[200px] text-xs leading-relaxed'>
-              {t('Powerful API Management Platform')}
+              {t('安全、稳定、透明的 AI 模型服务')}
             </p>
           </div>
 

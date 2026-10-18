@@ -240,7 +240,7 @@ export function RechargeFormCard({
                   <Label className='text-muted-foreground text-xs font-medium tracking-wider uppercase'>
                     {t('Amount')}
                   </Label>
-                  <div className='grid grid-cols-2 gap-1.5 sm:gap-3 md:grid-cols-4'>
+                  <div className={cn('grid grid-cols-2 gap-2.5 pt-2 sm:gap-3', embedded ? 'sm:grid-cols-3' : 'md:grid-cols-4')}>
                     {presetAmounts.map((preset) => {
                       const discount =
                         preset.discount ||
@@ -261,43 +261,38 @@ export function RechargeFormCard({
                         <Button
                           key={preset.value}
                           variant='outline'
+                          aria-pressed={selectedPreset === preset.value}
                           className={cn(
-                            'flex min-h-16 flex-col items-start rounded-lg px-3 py-2.5 text-left whitespace-normal sm:min-h-[72px] sm:p-4',
+                            'wk-topup-preset relative flex min-h-[84px] flex-col items-start justify-center rounded-2xl px-3.5 py-3 text-left whitespace-normal sm:min-h-[96px] sm:px-4',
                             selectedPreset === preset.value
-                              ? 'border-foreground bg-foreground/5 dark:border-foreground dark:bg-foreground/10'
-                              : 'border-muted'
+                              ? 'border-sky-500 bg-sky-50 shadow-[0_0_0_3px_rgba(14,165,233,0.15)] hover:bg-sky-50 dark:bg-sky-500/10'
+                              : 'border-slate-200 hover:border-sky-300 hover:bg-sky-50/40'
                           )}
                           onClick={() => onSelectPreset(preset)}
                         >
-                          <div className='flex w-full items-center justify-between'>
-                            <div className='text-base font-semibold sm:text-lg'>
-                              {formatNumber(displayValue)}
-                            </div>
-                            {hasDiscount && (
-                              <div className='text-xs font-medium text-green-600'>
-                                {getDiscountLabel(discount, t)}
-                              </div>
-                            )}
+                          {hasDiscount && (
+                            <span className='absolute -top-2 right-3 rounded-full bg-gradient-to-r from-orange-500 to-rose-500 px-2 py-0.5 text-[11px] leading-4 font-semibold text-white shadow-sm'>
+                              {getDiscountLabel(discount, t)}
+                            </span>
+                          )}
+                          <div className='text-foreground text-xl leading-tight font-bold tracking-tight sm:text-2xl'>
+                            {formatCurrency(actualPrice)}
                           </div>
-                          <div className='text-muted-foreground mt-1.5 w-full text-xs sm:mt-2'>
-                            {hasDiscount && savedAmount > 0 ? (
+                          <div className='text-muted-foreground mt-1 w-full text-xs leading-5'>
+                            {t('获得 {{amount}} 额度', {
+                              amount: formatNumber(displayValue),
+                            })}
+                          </div>
+                          {hasDiscount && savedAmount > 0 && (
+                            <div className='w-full text-[11px] leading-4 font-medium text-emerald-600'>
                               <Trans
                                 t={t}
-                                i18nKey='Pay {{amount}} <savings>• Save {{saved}}</savings>'
-                                values={{
-                                  amount: formatCurrency(actualPrice),
-                                  saved: formatCurrency(savedAmount),
-                                }}
-                                components={{
-                                  savings: <span className='text-green-600' />,
-                                }}
+                                i18nKey='立省 <savings>{{saved}}</savings>'
+                                values={{ saved: formatCurrency(savedAmount) }}
+                                components={{ savings: <span /> }}
                               />
-                            ) : (
-                              t('Pay {{amount}}', {
-                                amount: formatCurrency(actualPrice),
-                              })
-                            )}
-                          </div>
+                            </div>
+                          )}
                         </Button>
                       )
                     })}

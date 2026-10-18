@@ -22,7 +22,7 @@ export function Hero(props: HeroProps) {
           </p>
           <div className='mt-6 flex flex-wrap items-center gap-3'>
             <Button className='h-11 rounded-full bg-sky-500 px-6 text-base font-semibold text-white shadow-sm hover:bg-sky-600' render={<Link to={props.isAuthenticated ? '/dashboard' : '/sign-up'} />}>
-              进入工作台 <ArrowUpRight className='ml-1 size-4' />
+              {props.isAuthenticated ? '进入工作台' : '免费注册'} <ArrowUpRight className='ml-1 size-4' />
             </Button>
             <Button variant='outline' className='h-11 rounded-full border-sky-200 px-5 text-base font-medium text-slate-800 hover:border-sky-300 hover:bg-sky-50' render={<Link to='/skills' />}>
               <Sparkles className='mr-1.5 size-4 text-sky-500' />看能装什么技能

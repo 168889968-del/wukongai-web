@@ -499,6 +499,9 @@ export function Wallet(props: WalletProps) {
               <div className='flex items-center gap-2 rounded-xl bg-white p-3'><ShieldCheck className='size-4 text-emerald-500' />{t('Secure payment')}</div>
               <div className='flex items-center gap-2 rounded-xl bg-white p-3'><Clock3 className='size-4 text-sky-500' />{t('Automatic credit')}</div>
             </div>
+            <p className='mt-3 text-center text-[11px] leading-5 text-muted-foreground'>
+              {t('支付完成后额度自动到账，可在「订单记录」中查看每一笔充值。')}
+            </p>
           </aside>
         </div>
       </Dialog>
