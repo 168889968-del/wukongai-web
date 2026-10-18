@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { QuickSetupDialog } from '@/features/quick-setup/quick-setup-dialog'
 import { useSystemConfig } from '@/hooks/use-system-config'
+import { getLobeIcon } from '@/lib/lobe-icon'
 
 interface HeroProps {
   className?: string
@@ -24,8 +25,15 @@ export function Hero(props: HeroProps) {
             onClick={() => setQuickSetupOpen(true)}
             className='group mb-5 inline-flex max-w-full items-center gap-2.5 rounded-full border border-sky-200 bg-white/80 py-1.5 pr-4 pl-1.5 text-sm text-slate-600 shadow-sm backdrop-blur transition hover:border-sky-300 hover:bg-white'
           >
-            <span className='rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 px-2.5 py-1 text-xs font-semibold text-white'>一键配置</span>
-            <span className='truncate'>Codex、Claude Code 自动生成配置，复制即用</span>
+            <span className='flex -space-x-1.5' aria-hidden='true'>
+              {['OpenAI', 'Claude.Color', 'Grok', 'DeepSeek.Color'].map((icon) => (
+                <span key={icon} className='flex size-6 items-center justify-center rounded-full bg-white ring-2 ring-white dark:bg-slate-900 dark:ring-slate-900'>
+                  {getLobeIcon(icon, 16)}
+                </span>
+              ))}
+            </span>
+            <span className='truncate'>ChatGPT、Claude、Grok、DeepSeek 一条命令接入</span>
+            <span className='shrink-0 font-semibold text-sky-600'>一键配置</span>
             <ArrowRight className='size-4 shrink-0 text-sky-500 transition group-hover:translate-x-0.5' aria-hidden='true' />
           </button>
           <h1 className='max-w-3xl text-[clamp(2.1rem,3.2vw,3.25rem)] leading-[1.12] font-bold tracking-tight text-slate-950'>

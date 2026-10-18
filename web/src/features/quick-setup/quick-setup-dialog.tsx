@@ -36,8 +36,8 @@ import { handleServerError } from '@/lib/handle-server-error'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
 
-type ClientType = 'codex' | 'claude' | 'grok' | 'deepseek' | 'gemini' | 'openai'
-type OsType = 'windows' | 'mac'
+export type ClientType = 'codex' | 'claude' | 'grok' | 'deepseek' | 'gemini' | 'openai'
+export type OsType = 'windows' | 'mac'
 
 const API_KEY_ENV = 'WUKONGAI_API_KEY'
 
@@ -48,7 +48,7 @@ interface ConfigFile {
   content: string
 }
 
-interface ClientOption {
+export interface ClientOption {
   value: ClientType
   label: string
   hint: string
@@ -57,7 +57,7 @@ interface ClientOption {
 }
 
 /** The four model families shown first, each with its official client */
-const PRIMARY_OPTIONS: ClientOption[] = [
+export const PRIMARY_OPTIONS: ClientOption[] = [
   { value: 'codex', label: 'ChatGPT', hint: 'Codex', icon: 'OpenAI', modelRequired: true },
   { value: 'claude', label: 'Claude', hint: 'Claude Code', icon: 'Claude.Color', modelRequired: false },
   { value: 'grok', label: 'Grok', hint: 'Grok Build', icon: 'Grok', modelRequired: true },
@@ -228,6 +228,13 @@ function buildRestoreCommand(
   return `${parts.join('\n')}\nWrite-Host "已恢复原来的配置"\n`
 }
 
+/** Restore command for a client; needs no key because it only renames backups */
+export function getRestoreCommand(client: ClientType, os: OsType): string {
+  const files = buildFiles(client, 'https://example.invalid', 'placeholder', 'placeholder')
+  if (files.length === 0) return ''
+  return buildRestoreCommand(os, files, client === 'grok')
+}
+
 function downloadText(fileName: string, content: string) {
   const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
   const url = URL.createObjectURL(blob)
@@ -240,7 +247,7 @@ function downloadText(fileName: string, content: string) {
   URL.revokeObjectURL(url)
 }
 
-function detectOs(): OsType {
+export function detectOs(): OsType {
   if (typeof navigator === 'undefined') return 'windows'
   return /Mac|iPhone|iPad|Linux/i.test(navigator.userAgent) ? 'mac' : 'windows'
 }
@@ -295,6 +302,8 @@ function CodeBlock(props: CodeBlockProps) {
 interface QuickSetupDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  initialClient?: ClientType
+  initialOs?: OsType
 }
 
 export function QuickSetupDialog(props: QuickSetupDialogProps) {
@@ -340,7 +349,9 @@ export function QuickSetupDialog(props: QuickSetupDialogProps) {
     setRealKey('')
     setModel('')
     setShowManual(false)
-  }, [props.open])
+    if (props.initialClient) setClient(props.initialClient)
+    if (props.initialOs) setOs(props.initialOs)
+  }, [props.open, props.initialClient, props.initialOs])
 
   useEffect(() => {
     if (selectedKeyId === null && activeKeys.length > 0) {
