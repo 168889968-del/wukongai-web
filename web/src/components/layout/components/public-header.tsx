@@ -230,7 +230,7 @@ export function PublicHeader(props: PublicHeaderProps) {
           className={cn(
             'pointer-events-auto mx-auto transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]',
             scrolled
-              ? 'max-w-[1280px] px-3 pt-2 sm:px-4 sm:pt-3'
+              ? 'max-w-[960px] px-3 pt-2 sm:px-4 sm:pt-3'
               : 'max-w-none px-0 pt-0'
           )}
         >
@@ -238,21 +238,26 @@ export function PublicHeader(props: PublicHeaderProps) {
             className={cn(
               'flex items-center justify-between gap-3 border transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]',
               scrolled
-                ? 'bg-background/95 border-border/60 h-14 rounded-full px-4 shadow-[0_8px_30px_-14px_rgba(15,23,42,0.24)] backdrop-blur-2xl sm:h-16 sm:px-5'
+                ? 'bg-background/95 border-border/60 h-12 rounded-full px-4 shadow-[0_8px_30px_-14px_rgba(15,23,42,0.24)] backdrop-blur-2xl sm:px-5'
                 : 'bg-background/95 border-x-0 border-t-0 border-b-border/50 h-16 rounded-none px-5 shadow-none backdrop-blur-xl sm:px-8 lg:px-10'
             )}
           >
             {/* Logo */}
-            <div className='@container/system-brand flex shrink-0 items-center gap-1 lg:min-w-[140px]'>
+            <div
+              className={cn(
+                '@container/system-brand flex shrink-0 items-center gap-1',
+                scrolled ? 'lg:min-w-[100px]' : 'lg:min-w-[140px]'
+              )}
+            >
               <Link
                 to={homeUrl}
-                  className='group flex shrink-0 items-center gap-2.5'
+                className='group flex shrink-0 items-center gap-2.5'
               >
                 <div className='flex size-7 shrink-0 items-center justify-center transition-all duration-300 group-hover:scale-105'>
                   {logoContent}
                 </div>
                 <span
-                  className='whitespace-nowrap text-sm font-semibold tracking-tight'
+                  className='text-sm font-semibold tracking-tight whitespace-nowrap'
                   title={displaySiteName}
                 >
                   {loading ? (
@@ -266,11 +271,36 @@ export function PublicHeader(props: PublicHeaderProps) {
             </div>
 
             {/* Desktop nav */}
-            <div className='hidden min-w-0 flex-1 items-center justify-center gap-0.5 lg:flex'>
+            <div
+              className={cn(
+                'hidden min-w-0 flex-1 items-center justify-center gap-0.5 lg:flex',
+                scrolled &&
+                  'gap-0 [&>a]:px-2 [&>a]:py-1.5 [&>a]:text-[13px] [&>div]:mx-1'
+              )}
+            >
               {links.map((link) => {
                 const isActive = pathname === link.href
                 const isReferral = link.title === t('Referral Program')
                 const isRecharge = link.title === t('Recharge')
+                let appearance = cn(
+                  'rounded-full px-3 py-2',
+                  isActive && !link.external
+                    ? 'bg-sky-50 text-sky-700'
+                    : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
+                )
+                if (isReferral) {
+                  appearance =
+                    'rounded-full border border-sky-200 px-4 py-2 text-sky-600 hover:bg-sky-50'
+                }
+                if (isRecharge) {
+                  appearance =
+                    'rounded-full bg-sky-500 px-4 py-2 text-white shadow-sm hover:bg-sky-600'
+                }
+                const linkClassName = cn(
+                  'whitespace-nowrap text-sm font-medium transition-colors duration-200',
+                  appearance,
+                  link.disabled && 'pointer-events-none opacity-50'
+                )
                 if (link.external) {
                   return (
                     <a
@@ -282,19 +312,15 @@ export function PublicHeader(props: PublicHeaderProps) {
                       aria-disabled={link.disabled}
                       tabIndex={link.disabled ? -1 : undefined}
                       onClick={(event) => handleNavLinkClick(event, link)}
-                      className={cn(
-                        'whitespace-nowrap text-sm font-medium transition-colors duration-200',
-                        isRecharge
-                          ? 'rounded-full bg-sky-500 px-4 py-2 text-white shadow-sm hover:bg-sky-600'
-                          : isReferral
-                            ? 'rounded-full border border-sky-200 px-4 py-2 text-sky-600 hover:bg-sky-50'
-                            : 'rounded-full px-3 py-2 text-muted-foreground hover:bg-muted/70 hover:text-foreground',
-                        link.disabled && 'pointer-events-none opacity-50'
-                      )}
+                      className={linkClassName}
                     >
                       <span className='inline-flex items-center gap-1.5'>
-                        {isRecharge && <WalletCards className='size-4' aria-hidden='true' />}
-                        {isReferral && <Gift className='size-4' aria-hidden='true' />}
+                        {isRecharge && (
+                          <WalletCards className='size-4' aria-hidden='true' />
+                        )}
+                        {isReferral && (
+                          <Gift className='size-4' aria-hidden='true' />
+                        )}
                         {t(link.title)}
                       </span>
                     </a>
@@ -307,24 +333,15 @@ export function PublicHeader(props: PublicHeaderProps) {
                     title={t(link.title)}
                     disabled={link.disabled}
                     onClick={(event) => handleNavLinkClick(event, link)}
-                    className={cn(
-                      'whitespace-nowrap text-sm font-medium transition-colors duration-200',
-                      isRecharge
-                        ? 'rounded-full bg-sky-500 px-4 py-2 text-white shadow-sm hover:bg-sky-600'
-                        : isReferral
-                          ? 'rounded-full border border-sky-200 px-4 py-2 text-sky-600 hover:bg-sky-50'
-                        : cn(
-                            'rounded-full px-3 py-2',
-                            isActive
-                              ? 'bg-sky-50 text-sky-700'
-                              : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
-                          ),
-                      link.disabled && 'pointer-events-none opacity-50'
-                    )}
+                    className={linkClassName}
                   >
                     <span className='inline-flex items-center gap-1.5'>
-                      {isRecharge && <WalletCards className='size-4' aria-hidden='true' />}
-                      {isReferral && <Gift className='size-4' aria-hidden='true' />}
+                      {isRecharge && (
+                        <WalletCards className='size-4' aria-hidden='true' />
+                      )}
+                      {isReferral && (
+                        <Gift className='size-4' aria-hidden='true' />
+                      )}
                       {t(link.title)}
                     </span>
                   </Link>

@@ -33,10 +33,10 @@ jobs:
         run: bun run typecheck
       - name: Test recharge interactions
         run: bun run test src/features/wallet/__tests__/recharge-layout.test.tsx
-      - name: Lint changed recharge components
-        run: bunx oxlint -c .oxlintrc.json src/features/wallet/components/recharge-dialog.tsx src/features/wallet/components/recharge-form-card.tsx src/features/wallet/__tests__/recharge-layout.test.tsx
+      - name: Lint website components
+        run: bunx oxlint -c .oxlintrc.json src/features/wallet/components/recharge-dialog.tsx src/features/wallet/components/recharge-form-card.tsx src/features/wallet/__tests__/recharge-layout.test.tsx src/components/layout/components/public-header.tsx
       - name: Check recharge formatting
-        run: bunx oxfmt --check src/features/wallet/components/recharge-dialog.tsx src/features/wallet/components/recharge-form-card.tsx src/features/wallet/__tests__/recharge-layout.test.tsx
+        run: bunx oxfmt --check src/features/wallet/components/recharge-dialog.tsx src/features/wallet/components/recharge-form-card.tsx src/features/wallet/__tests__/recharge-layout.test.tsx src/components/layout/components/public-header.tsx
       - run: bun run build
       - name: Package compiled website
         run: |

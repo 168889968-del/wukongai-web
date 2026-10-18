@@ -320,7 +320,7 @@ export function RechargeFormCard({
                             variant='outline'
                             aria-pressed={selected}
                             className={cn(
-                              'relative h-auto min-h-40 min-w-0 flex-col items-start justify-center gap-0 rounded-2xl border px-4 py-6 text-left whitespace-normal shadow-none sm:min-h-44 sm:px-5',
+                              'relative h-auto min-h-32 min-w-0 flex-col items-start justify-center gap-0 rounded-2xl border px-4 py-4 text-left whitespace-normal shadow-none sm:min-h-36',
                               selected
                                 ? 'border-sky-500 bg-sky-50/70 hover:bg-sky-50 dark:bg-sky-500/10'
                                 : 'border-border bg-background hover:border-sky-300 hover:bg-sky-50/30'
@@ -334,7 +334,7 @@ export function RechargeFormCard({
                             </span>
                             <span className='text-foreground mt-3 flex items-baseline gap-1'>
                               <span className='text-base font-medium'>¥</span>
-                              <span className='text-4xl leading-none font-semibold tracking-tight tabular-nums'>
+                              <span className='text-[2rem] leading-none font-semibold tracking-tight tabular-nums'>
                                 {formatCurrency(actualPrice)}
                               </span>
                             </span>
@@ -400,7 +400,7 @@ export function RechargeFormCard({
                           <Button
                             type='button'
                             variant='outline'
-                            className='border-border h-auto min-h-40 min-w-0 flex-col items-start justify-center gap-2 rounded-2xl px-4 py-6 text-left whitespace-normal shadow-none hover:border-sky-300 hover:bg-sky-50/30 sm:min-h-44 sm:px-5'
+                            className='border-border h-auto min-h-32 min-w-0 flex-col items-start justify-center gap-2 rounded-2xl px-4 py-4 text-left whitespace-normal shadow-none hover:border-sky-300 hover:bg-sky-50/30 sm:min-h-36'
                           >
                             <span className='text-base font-medium'>
                               {t('Custom recharge')}

@@ -265,14 +265,14 @@ export function RechargeDialog(props: RechargeDialogProps) {
         onOpenChange={props.onOpenChange}
         title={t('Account Recharge')}
         description={t('Choose an amount and payment method')}
-        contentHeight='min(88dvh, 800px)'
-        contentClassName='max-w-[calc(100vw-1.5rem)] gap-0 overflow-hidden rounded-3xl p-0 sm:max-w-5xl sm:p-0 xl:max-w-7xl [&>div]:mx-0'
+        contentHeight='min(84dvh, 680px)'
+        contentClassName='max-w-[calc(100vw-1.5rem)] gap-0 overflow-hidden rounded-3xl p-0 sm:max-w-[min(1120px,calc(100vw-3rem))] sm:p-0 [&>div]:mx-0'
         headerClassName='sr-only'
         bodyClassName='h-full px-0 py-0'
       >
         <div className='grid min-h-full gap-0 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_320px]'>
-          <div className='min-w-0 px-4 py-5 sm:px-7 sm:py-6 lg:min-h-0 lg:overflow-y-auto'>
-            <div className='mb-6 flex items-center justify-between gap-4 border-b pr-7 pb-5 text-sm lg:pr-0'>
+          <div className='min-w-0 px-4 py-4 sm:px-6 sm:py-5 lg:min-h-0 lg:overflow-y-auto'>
+            <div className='mb-4 flex items-center justify-between gap-4 border-b pr-7 pb-4 text-sm lg:pr-0'>
               <span className='text-muted-foreground'>
                 {t('Recharge Account')}
               </span>
