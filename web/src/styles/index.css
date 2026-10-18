@@ -987,9 +987,7 @@ For commercial licensing, please contact support@quantumnous.com
     }
 
     .auth-brand-panel > .auth-brand-lockup {
-      position: absolute;
-      top: 2rem;
-      left: clamp(3rem, 8vw, 7rem);
+      margin-bottom: 0.5rem;
     }
 
     .auth-brand-copy {
