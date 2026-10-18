@@ -2,9 +2,27 @@ $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
 $OutputEncoding = [Text.UTF8Encoding]::new($false)
 $ProgressPreference = 'SilentlyContinue'
+[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 $stage = '初始化'
+$env:PSModulePath = (Join-Path $PSHOME 'Modules') + ';' + $env:PSModulePath
 Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Security\Microsoft.PowerShell.Security.psd1') -ErrorAction Stop
 $tools = Join-Path $env:LOCALAPPDATA 'WukongAi\setup-runtime'
+
+# Save the response bytes to a file: PS 5.1 returns byte[] for octet-stream.
+# Passing .Content to ScriptBlock.Create converts it to decimal numbers.
+function Invoke-NativeInstaller([string]$Url) {
+    $installer = Join-Path ([IO.Path]::GetTempPath()) ('wukongai-installer-' + [guid]::NewGuid().ToString('N') + '.ps1')
+    try {
+        Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $installer -TimeoutSec 120
+        # Windows PowerShell 5.1 needs a BOM to reliably read UTF-8 scripts.
+        $source = [IO.File]::ReadAllText($installer)
+        [IO.File]::WriteAllText($installer, $source, [Text.UTF8Encoding]::new($true))
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $installer
+        if ($LASTEXITCODE -ne 0) { throw "Native client installation failed (exit $LASTEXITCODE)" }
+    } finally {
+        if (Test-Path -LiteralPath $installer) { Remove-Item -LiteralPath $installer -Force }
+    }
+}
 
 function Get-Node {
     $candidate = Get-Command node.exe -ErrorAction SilentlyContinue
@@ -26,7 +44,9 @@ function Get-Node {
     try {
         $archive = Join-Path $temporary $name
         Invoke-WebRequest "https://nodejs.org/dist/$($release.version)/$name" -OutFile $archive -UseBasicParsing
-        $checksums = (Invoke-WebRequest "https://nodejs.org/dist/$($release.version)/SHASUMS256.txt" -UseBasicParsing).Content
+        $checksumFile = Join-Path $temporary 'SHASUMS256.txt'
+        Invoke-WebRequest "https://nodejs.org/dist/$($release.version)/SHASUMS256.txt" -UseBasicParsing -OutFile $checksumFile
+        $checksums = [IO.File]::ReadAllText($checksumFile)
         $line = ($checksums -split "`n" | Where-Object { $_.Trim().EndsWith(" $name") })
         if (-not $line -or (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ne ($line.Trim() -split '\s+')[0]) { throw 'Node checksum mismatch' }
         New-Item -ItemType Directory -Path $tools -Force | Out-Null
@@ -72,14 +92,16 @@ try {
             Write-Host "正在安装 $($names[$payload.client])，网络慢时请耐心等待..." -ForegroundColor Cyan
             if ($payload.client -eq 'claude' -or $payload.client -eq 'grok') {
                 $installerUrl = if ($payload.client -eq 'claude') { 'https://claude.ai/install.ps1' } else { 'https://x.ai/cli/install.ps1' }
-                & powershell.exe -NoProfile -Command "& ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing -Uri '$installerUrl').Content))"
-                if ($LASTEXITCODE -ne 0) { throw 'Native client installation failed' }
+                Invoke-NativeInstaller $installerUrl
             } else {
                 $package = if ($payload.client -eq 'codex') { '@openai/codex' } else { '@deepseek-ai/dsh' }
                 & $npm install --prefix $tools --no-audit --no-fund --registry=https://registry.npmjs.org $package
                 if ($LASTEXITCODE -ne 0) { throw 'Client installation failed' }
             }
         }
+    }
+    if ($payload.mode -eq 'setup' -or $payload.mode -eq 'install') {
+        if (-not (Get-Command $commands[$payload.client] -ErrorAction SilentlyContinue)) { throw 'Client command not found after installation' }
     }
     if ($payload.mode -eq 'install') {
         Write-Host '客户端安装完成。请返回网页，点击“已经装好，下一步”下载配置工具。' -ForegroundColor Green
