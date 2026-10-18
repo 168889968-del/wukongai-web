@@ -1,0 +1,35 @@
+ M Dockerfile
+ M docker-compose.yml
+ M web/index.html
+ M web/rsbuild.config.ts
+ M web/src/components/layout/components/authenticated-layout.tsx
+ M web/src/components/layout/components/public-header.tsx
+ M web/src/components/layout/components/public-layout.tsx
+ M web/src/components/layout/components/top-nav.tsx
+ M web/src/components/profile-dropdown.tsx
+ M web/src/features/auth/auth-layout.tsx
+ M web/src/features/home/components/sections/cta.tsx
+ M web/src/features/home/components/sections/hero.tsx
+ M web/src/features/home/components/sections/how-it-works.tsx
+ M web/src/features/home/components/sections/stats.tsx
+ M web/src/features/home/index.tsx
+ M web/src/features/wallet/components/recharge-form-card.tsx
+ M web/src/features/wallet/components/wallet-stats-card.tsx
+ M web/src/features/wallet/index.tsx
+ M web/src/hooks/use-top-nav-links.ts
+ M web/src/i18n/locales/en.json
+ M web/src/i18n/locales/zh-TW.json
+ M web/src/i18n/locales/zh.json
+ M web/src/routeTree.gen.ts
+ M web/src/styles/index.css
+?? Caddyfile
+?? backups/
+?? web/public/wukongai-brand.png
+?? web/public/wukongai-group-qr.png
+?? web/public/wukongai-mascot.png
+?? web/src/components/community-entry.tsx
+?? web/src/features/home/community-section.tsx
+?? web/src/features/home/model-pricing-preview.tsx
+?? web/src/features/home/skills-section.tsx
+?? web/src/features/skills-showcase/
+?? web/src/routes/skills/
