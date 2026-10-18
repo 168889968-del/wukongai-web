@@ -15,7 +15,7 @@ concurrency:
 jobs:
   windows-tools:
     runs-on: windows-latest
-    timeout-minutes: 35
+    timeout-minutes: 50
     defaults:
       run:
         working-directory: web

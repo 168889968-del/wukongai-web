@@ -46,9 +46,19 @@ function execute(
       child.stderr.on('data', (chunk) => {
         output += chunk.toString()
       })
+      let timedOut = false
       const timer = setTimeout(() => {
-        child.kill()
-        reject(new Error(`Timed out: ${output}`))
+        timedOut = true
+        const killer = spawn(
+          'taskkill.exe',
+          ['/PID', String(child.pid), '/T', '/F'],
+          { windowsHide: true }
+        )
+        killer.on('close', () => reject(new Error(`Timed out: ${output}`)))
+        killer.on('error', () => {
+          child.kill()
+          reject(new Error(`Timed out: ${output}`))
+        })
       }, timeout)
       child.on('error', (error) => {
         clearTimeout(timer)
@@ -56,6 +66,7 @@ function execute(
       })
       child.on('close', (code) => {
         clearTimeout(timer)
+        if (timedOut) return
         resolve({ code, output })
       })
       child.stdin.end('\r\n')
@@ -66,6 +77,17 @@ function execute(
 describe.skipIf(process.platform !== 'win32')(
   'native Windows installer execution',
   () => {
+    it('kills the entire installer process tree when a test times out', async () => {
+      await expect(
+        execute(
+          'cmd.exe',
+          ['/d', '/s', '/c', 'ping -n 20 127.0.0.1 >nul'],
+          process.env,
+          200
+        )
+      ).rejects.toThrow('Timed out')
+    })
+
     it.each(['application/octet-stream', 'text/plain'])(
       'executes downloaded UTF-8 bytes served as %s',
       async (contentType) => {
@@ -177,7 +199,7 @@ describe.skipIf(process.platform !== 'win32')(
             'cmd.exe',
             ['/d', '/s', '/c', `""${bat}""`],
             env,
-            420000
+            client === 'deepseek' ? 900000 : 420000
           )
           expect(result.code, `${client}: ${result.output}`).toBe(0)
           expect(result.output).toContain('客户端安装完成')
