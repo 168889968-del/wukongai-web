@@ -7285,6 +7285,18 @@
     "Payment and credit amounts are verified by the server": "Payment and credit amounts are verified by the server",
     "Your balance updates automatically after payment": "Your balance updates automatically after payment",
     "For large recharges, please contact your dedicated support representative.": "Для крупных пополнений свяжитесь с персональной поддержкой.",
-    "Copy QQ number": "Скопировать номер QQ"
+    "Copy QQ number": "Скопировать номер QQ",
+    "Download setup tool": "Download setup tool",
+    "Download official restore tool": "Download official restore tool",
+    "Switch back to official": "Switch back to official",
+    "Download the tool and connect to WukongAi": "Download the tool and connect to WukongAi",
+    "Choose your client, download the BAT file, and double-click to get started.": "Choose your client, download the BAT file, and double-click to get started.",
+    "The tool installs {{client}} if needed, saves your configuration, and opens the client after setup.": "The tool installs {{client}} if needed, saves your configuration, and opens the client after setup.",
+    "Sign in to download setup tool": "Sign in to download setup tool",
+    "Download the restore BAT file to recover your configuration from before connecting to WukongAi.": "Download the restore BAT file to recover your configuration from before connecting to WukongAi.",
+    "Download and double-click the BAT file to install and configure the client.": "Download and double-click the BAT file to install and configure the client.",
+    "The tool saves your original configuration before connecting to WukongAi.": "The tool saves your original configuration before connecting to WukongAi.",
+    "Downloaded: {{file}}. Double-click it to run.": "Downloaded: {{file}}. Double-click it to run.",
+    "The setup file contains your API key. Keep it private.": "The setup file contains your API key. Keep it private."
   }
 }

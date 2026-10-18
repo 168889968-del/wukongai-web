@@ -7296,6 +7296,18 @@
     "Payment and credit amounts are verified by the server": "支付金额和到账额度均由服务端校验",
     "Your balance updates automatically after payment": "支付成功后账户额度将自动更新",
     "For large recharges, please contact your dedicated support representative.": "大额充值请联系专属客服咨询办理。",
-    "Copy QQ number": "复制 QQ 号码"
+    "Copy QQ number": "复制 QQ 号码",
+    "Download setup tool": "下载配置工具",
+    "Download official restore tool": "下载切回官方版工具",
+    "Switch back to official": "切回官方版",
+    "Download the tool and connect to WukongAi": "下载工具，双击接入悟空Ai",
+    "Choose your client, download the BAT file, and double-click to get started.": "选好客户端、密钥和模型，下载 BAT 文件后双击运行。",
+    "The tool installs {{client}} if needed, saves your configuration, and opens the client after setup.": "工具会自动检测并安装 {{client}}，备份原配置，配置完成后打开客户端。",
+    "Sign in to download setup tool": "登录后下载配置工具",
+    "Download the restore BAT file to recover your configuration from before connecting to WukongAi.": "下载恢复 BAT 文件，双击即可恢复接入悟空Ai之前保存的配置。",
+    "Download and double-click the BAT file to install and configure the client.": "下载后双击 BAT 文件，自动安装并配置客户端。",
+    "The tool saves your original configuration before connecting to WukongAi.": "首次接入前会备份原配置，重复运行不会覆盖这份备份。",
+    "Downloaded: {{file}}. Double-click it to run.": "已下载 {{file}}，请双击运行。",
+    "The setup file contains your API key. Keep it private.": "配置工具包含你的 API 密钥，请勿分享给他人。"
   }
 }

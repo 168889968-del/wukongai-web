@@ -37,11 +37,15 @@ import { Button } from '@/components/ui/button'
 import { saveAffiliateCode } from '@/features/auth/lib/storage'
 import {
   PRIMARY_OPTIONS,
-  QuickSetupDialog,
   detectOs,
   type ClientType,
   type OsType,
-} from '@/features/quick-setup/quick-setup-dialog'
+} from '@/features/quick-setup/configuration'
+import { QuickSetupDialog } from '@/features/quick-setup/quick-setup-dialog'
+import {
+  downloadWindowsTool,
+  isWindowsClient,
+} from '@/features/quick-setup/windows-tools'
 import { getAffiliateCode as fetchAffiliateCode } from '@/features/wallet/api'
 import { getLobeIcon } from '@/lib/lobe-icon'
 import { cn } from '@/lib/utils'
@@ -124,15 +128,20 @@ function StepProgress(props: { current: Step }) {
             <p
               className={cn(
                 'mt-2 flex items-center gap-1.5 text-sm',
-                active ? 'font-semibold text-slate-950 dark:text-white' : 'text-slate-500'
+                active
+                  ? 'font-semibold text-slate-950 dark:text-white'
+                  : 'text-slate-500'
               )}
             >
               <span
                 className={cn(
                   'flex size-5 items-center justify-center rounded-full text-[11px] font-semibold',
                   done && 'bg-sky-500 text-white',
-                  active && 'bg-slate-950 text-white dark:bg-white dark:text-slate-950',
-                  !done && !active && 'bg-slate-100 text-slate-500 dark:bg-slate-800'
+                  active &&
+                    'bg-slate-950 text-white dark:bg-white dark:text-slate-950',
+                  !done &&
+                    !active &&
+                    'bg-slate-100 text-slate-500 dark:bg-slate-800'
                 )}
               >
                 {done ? <Check className='size-3' /> : item.step}
@@ -148,7 +157,10 @@ function StepProgress(props: { current: Step }) {
 
 function OsToggle(props: { value: OsType; onChange: (os: OsType) => void }) {
   return (
-    <div className='inline-flex rounded-full bg-slate-100 p-1 dark:bg-slate-800' aria-label='选择电脑系统'>
+    <div
+      className='inline-flex rounded-full bg-slate-100 p-1 dark:bg-slate-800'
+      aria-label='选择电脑系统'
+    >
       {(
         [
           { value: 'windows', label: 'Windows' },
@@ -197,7 +209,9 @@ function ReferralLinkButton() {
         <Link2 className='mr-1.5 size-4' />
         复制推荐链接
       </CopyButton>
-      <p className='text-xs text-slate-500'>把这个向导分享给朋友，对方注册后会自动记到你的推荐码下。</p>
+      <p className='text-xs text-slate-500'>
+        把这个向导分享给朋友，对方注册后会自动记到你的推荐码下。
+      </p>
     </div>
   )
 }
@@ -208,6 +222,7 @@ export function GetStarted() {
   const [client, setClient] = useState<ClientType>('codex')
   const [os, setOs] = useState<OsType>(detectOs)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [installDownloaded, setInstallDownloaded] = useState('')
 
   // Keep a shared invite code so sign-up later credits the referrer
   useEffect(() => {
@@ -215,12 +230,22 @@ export function GetStarted() {
     if (aff) saveAffiliateCode(aff)
   }, [])
 
-  const current = PRIMARY_OPTIONS.find((option) => option.value === client) ?? PRIMARY_OPTIONS[0]
+  const current =
+    PRIMARY_OPTIONS.find((option) => option.value === client) ??
+    PRIMARY_OPTIONS[0]
   const guide = INSTALL_GUIDES[client]
   const terminalName = os === 'mac' ? '终端' : 'PowerShell'
+  let installerUrl = guide?.docsUrl ?? ''
+  if (client === 'codex') {
+    installerUrl =
+      os === 'windows'
+        ? 'https://persistent.oaistatic.com/codex-app-prod/ChatGPT-x64.msix'
+        : 'https://persistent.oaistatic.com/codex-app-prod/Codex.dmg'
+  }
 
   const chooseModel = (value: ClientType) => {
     setClient(value)
+    setInstallDownloaded('')
     setStep(2)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -247,7 +272,9 @@ export function GetStarted() {
           <section className='mt-6 rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-[0_8px_36px_-32px_rgba(15,23,42,0.22)] sm:p-8 dark:border-slate-800 dark:bg-slate-950'>
             {step === 1 && (
               <div>
-                <h2 className='text-center text-xl font-bold text-slate-950 dark:text-white'>你想用哪个模型？</h2>
+                <h2 className='text-center text-xl font-bold text-slate-950 dark:text-white'>
+                  你想用哪个模型？
+                </h2>
                 <div className='mt-6 grid gap-3 sm:grid-cols-2'>
                   {PRIMARY_OPTIONS.map((option) => (
                     <button
@@ -260,10 +287,17 @@ export function GetStarted() {
                         {getLobeIcon(option.icon, 28)}
                       </span>
                       <span className='min-w-0 flex-1'>
-                        <span className='block text-lg font-semibold text-slate-950 dark:text-white'>{option.label}</span>
-                        <span className='block text-sm text-slate-500'>用 {option.hint}</span>
+                        <span className='block text-lg font-semibold text-slate-950 dark:text-white'>
+                          {option.label}
+                        </span>
+                        <span className='block text-sm text-slate-500'>
+                          用 {option.hint}
+                        </span>
                       </span>
-                      <ArrowRight className='size-5 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-sky-500' aria-hidden='true' />
+                      <ArrowRight
+                        className='size-5 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-sky-500'
+                        aria-hidden='true'
+                      />
                     </button>
                   ))}
                 </div>
@@ -289,61 +323,140 @@ export function GetStarted() {
                 </div>
 
                 <h2 className='mt-8 text-center text-xl font-bold text-slate-950 dark:text-white'>
-                  先在电脑上装好 {current.hint}
+                  电脑上装好 {current.hint} 了吗？
                 </h2>
 
-                <ol className='mx-auto mt-6 max-w-2xl space-y-4'>
-                  {guide.needsNode && (
-                    <li className='rounded-2xl border border-slate-200 p-4 dark:border-slate-700'>
-                      <p className='font-semibold'>① 下载并安装 Node.js</p>
-                      <p className='mt-1 text-sm text-slate-600 dark:text-slate-400'>
-                        {current.hint} 通过 Node.js 安装。已经装过的可以跳过这一步，选「LTS」版本，一路下一步即可。
-                      </p>
-                      <Button
-                        className='mt-3 rounded-full bg-sky-500 text-white hover:bg-sky-600'
-                        render={<a href={NODE_DOWNLOAD_URL} target='_blank' rel='noopener noreferrer' />}
-                      >
-                        <Download className='mr-1.5 size-4' />
-                        下载 Node.js 安装包
-                      </Button>
-                    </li>
-                  )}
-                  <li className='rounded-2xl border border-slate-200 p-4 dark:border-slate-700'>
-                    <p className='font-semibold'>
-                      {guide.needsNode ? '②' : '①'} 打开{terminalName}，运行安装命令
-                    </p>
-                    <p className='mt-1 text-sm text-slate-600 dark:text-slate-400'>
-                      {os === 'mac'
-                        ? 'Mac 在「启动台」里搜索「终端」打开。'
-                        : '按 Win 键，搜索「PowerShell」打开。'}
-                    </p>
-                    <div className='mt-3 flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-3'>
-                      <Terminal className='size-4 shrink-0 text-sky-300' aria-hidden='true' />
-                      <code className='min-w-0 flex-1 overflow-x-auto text-sm text-sky-100'>{guide.command[os]}</code>
-                      <CopyButton value={guide.command[os]} variant='ghost' size='sm' tooltip='复制' successTooltip='已复制' aria-label='复制安装命令' />
-                    </div>
-                    {guide.note && <p className='mt-2 text-xs text-slate-500'>{guide.note}</p>}
-                  </li>
-                </ol>
-
-                <div className='mt-6 flex flex-wrap items-center justify-center gap-3'>
+                <div className='mt-8 flex flex-wrap items-center justify-center gap-3'>
                   <Button
-                    className='h-11 rounded-full bg-sky-500 px-6 text-base font-semibold text-white hover:bg-sky-600'
+                    className='rounded-full bg-sky-500 px-6 text-white hover:bg-sky-600'
                     onClick={() => setStep(3)}
                   >
-                    装好了，下一步
-                    <ArrowRight className='ml-1.5 size-4' />
+                    已经装好，下一步 <ArrowRight className='ml-1.5 size-4' />
                   </Button>
+                  {os === 'windows' &&
+                  client !== 'codex' &&
+                  isWindowsClient(client) ? (
+                    <Button
+                      variant='outline'
+                      className='rounded-full px-6'
+                      onClick={() =>
+                        setInstallDownloaded(
+                          downloadWindowsTool(client, 'install')
+                        )
+                      }
+                    >
+                      <Download className='mr-1.5 size-4' />
+                      还没有，去下载
+                    </Button>
+                  ) : (
+                    <Button
+                      variant='outline'
+                      className='rounded-full px-6'
+                      render={
+                        <a
+                          href={installerUrl}
+                          target='_blank'
+                          rel='noopener noreferrer'
+                        />
+                      }
+                    >
+                      <Download className='mr-1.5 size-4' />
+                      还没有，去下载
+                    </Button>
+                  )}
+                </div>
+                {installDownloaded && (
+                  <p
+                    role='status'
+                    className='mt-4 text-center text-sm text-sky-600'
+                  >
+                    已下载 {installDownloaded}，双击运行后返回此页继续配置。
+                  </p>
+                )}
+                {client === 'codex' && os === 'windows' && (
+                  <p className='mt-4 text-center text-sm text-slate-500'>
+                    下载官方 Windows x64 安装包，安装后继续下一步。
+                    <a
+                      className='ml-2 text-sky-600'
+                      href='https://persistent.oaistatic.com/codex-app-prod/ChatGPT-arm64.msix'
+                      target='_blank'
+                      rel='noopener noreferrer'
+                    >
+                      ARM64 电脑下载
+                    </a>
+                  </p>
+                )}
+                <details className='mx-auto mt-8 max-w-2xl'>
+                  <summary className='cursor-pointer text-center text-sm text-slate-500'>
+                    查看命令行安装方法与官方说明
+                  </summary>
+                  <ol className='mx-auto mt-6 max-w-2xl space-y-4'>
+                    {guide.needsNode && (
+                      <li className='rounded-2xl border border-slate-200 p-4 dark:border-slate-700'>
+                        <p className='font-semibold'>① 下载并安装 Node.js</p>
+                        <p className='mt-1 text-sm text-slate-600 dark:text-slate-400'>
+                          {current.hint} 通过 Node.js
+                          安装。已经装过的可以跳过这一步，选「LTS」版本，一路下一步即可。
+                        </p>
+                        <Button
+                          className='mt-3 rounded-full bg-sky-500 text-white hover:bg-sky-600'
+                          render={
+                            <a
+                              href={NODE_DOWNLOAD_URL}
+                              target='_blank'
+                              rel='noopener noreferrer'
+                            />
+                          }
+                        >
+                          <Download className='mr-1.5 size-4' />
+                          下载 Node.js 安装包
+                        </Button>
+                      </li>
+                    )}
+                    <li className='rounded-2xl border border-slate-200 p-4 dark:border-slate-700'>
+                      <p className='font-semibold'>
+                        {guide.needsNode ? '②' : '①'} 打开{terminalName}
+                        ，运行安装命令
+                      </p>
+                      <p className='mt-1 text-sm text-slate-600 dark:text-slate-400'>
+                        {os === 'mac'
+                          ? 'Mac 在「启动台」里搜索「终端」打开。'
+                          : '按 Win 键，搜索「PowerShell」打开。'}
+                      </p>
+                      <div className='mt-3 flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-3'>
+                        <Terminal
+                          className='size-4 shrink-0 text-sky-300'
+                          aria-hidden='true'
+                        />
+                        <code className='min-w-0 flex-1 overflow-x-auto text-sm text-sky-100'>
+                          {guide.command[os]}
+                        </code>
+                        <CopyButton
+                          value={guide.command[os]}
+                          variant='ghost'
+                          size='sm'
+                          tooltip='复制'
+                          successTooltip='已复制'
+                          aria-label='复制安装命令'
+                        />
+                      </div>
+                      {guide.note && (
+                        <p className='mt-2 text-xs text-slate-500'>
+                          {guide.note}
+                        </p>
+                      )}
+                    </li>
+                  </ol>
                   <a
                     href={guide.docsUrl}
                     target='_blank'
                     rel='noopener noreferrer'
-                    className='inline-flex items-center gap-1 text-sm text-slate-500 hover:text-sky-600'
+                    className='mt-4 inline-flex items-center gap-1 text-sm text-sky-600'
                   >
                     {guide.docsLabel}
                     <ExternalLink className='size-3.5' />
                   </a>
-                </div>
+                </details>
               </div>
             )}
 
@@ -368,23 +481,30 @@ export function GetStarted() {
                 <span className='mx-auto mt-8 flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-indigo-500 text-white'>
                   <Sparkles className='size-7' />
                 </span>
-                <h2 className='mt-4 text-xl font-bold text-slate-950 dark:text-white'>最后一步：接入悟空Ai</h2>
+                <h2 className='mt-4 text-xl font-bold text-slate-950 dark:text-white'>
+                  最后一步：接入悟空Ai
+                </h2>
 
                 {isAuthenticated ? (
                   <>
                     <p className='mx-auto mt-2 max-w-md text-sm text-slate-600 dark:text-slate-400'>
-                      选一个你的 API 密钥和模型，生成一条命令，粘贴到{terminalName}运行，然后重新打开 {current.hint} 就能用了。
+                      {os === 'windows'
+                        ? '选择你的 API 密钥和模型，下载配置 BAT，双击后自动完成配置并打开客户端。'
+                        : `选一个你的 API 密钥和模型，生成配置，按提示在${terminalName}运行即可。`}
                     </p>
                     <Button
                       className='mt-6 h-11 rounded-full bg-sky-500 px-6 text-base font-semibold text-white hover:bg-sky-600'
                       onClick={() => setDialogOpen(true)}
                     >
                       <Sparkles className='mr-1.5 size-4' />
-                      一键生成配置
+                      {os === 'windows' ? '下载配置工具' : '一键生成配置'}
                     </Button>
                     <p className='mt-4 text-xs text-slate-500'>
                       还没有余额？
-                      <a href='/wallet?topup=1' className='ml-1 text-sky-600 hover:text-sky-700'>
+                      <a
+                        href='/wallet?topup=1'
+                        className='ml-1 text-sky-600 hover:text-sky-700'
+                      >
                         去充值
                       </a>
                     </p>
@@ -401,7 +521,11 @@ export function GetStarted() {
                       >
                         免费注册
                       </Button>
-                      <Button variant='outline' className='h-11 rounded-full px-6' render={<Link to='/sign-in' />}>
+                      <Button
+                        variant='outline'
+                        className='h-11 rounded-full px-6'
+                        render={<Link to='/sign-in' />}
+                      >
                         已有账号，登录
                       </Button>
                     </div>

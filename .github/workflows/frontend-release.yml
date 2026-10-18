@@ -13,7 +13,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  windows-tools:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+      - run: bun install --frozen-lockfile
+      - run: bun run test src/features/quick-setup/__tests__/windows-tools.test.ts
   build:
+    needs: windows-tools
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -31,12 +48,12 @@ jobs:
       - run: bun install --frozen-lockfile
       - name: Check types
         run: bun run typecheck
-      - name: Test recharge interactions
-        run: bun run test src/features/wallet/__tests__/recharge-layout.test.tsx
+      - name: Test recharge and configuration tools
+        run: bun run test src/features/wallet/__tests__/recharge-layout.test.tsx src/features/quick-setup/__tests__/windows-tools.test.ts
       - name: Lint website components
-        run: bunx oxlint -c .oxlintrc.json src/features/wallet/components/recharge-dialog.tsx src/features/wallet/components/recharge-form-card.tsx src/features/wallet/__tests__/recharge-layout.test.tsx src/components/layout/components/public-header.tsx
+        run: bunx oxlint -c .oxlintrc.json src/features/wallet/components/recharge-dialog.tsx src/features/wallet/components/recharge-form-card.tsx src/features/wallet/__tests__/recharge-layout.test.tsx src/components/layout/components/public-header.tsx src/features/quick-setup/configuration.ts src/features/quick-setup/windows-tools.ts src/features/quick-setup/windows-config.mjs src/features/quick-setup/quick-setup-dialog.tsx src/features/quick-setup/__tests__/windows-tools.test.ts src/features/get-started/index.tsx src/features/home/components/sections/how-it-works.tsx rsbuild.config.ts
       - name: Check recharge formatting
-        run: bunx oxfmt --check src/features/wallet/components/recharge-dialog.tsx src/features/wallet/components/recharge-form-card.tsx src/features/wallet/__tests__/recharge-layout.test.tsx src/components/layout/components/public-header.tsx
+        run: bunx oxfmt --check src/features/wallet/components/recharge-dialog.tsx src/features/wallet/components/recharge-form-card.tsx src/features/wallet/__tests__/recharge-layout.test.tsx src/components/layout/components/public-header.tsx src/features/quick-setup/configuration.ts src/features/quick-setup/windows-tools.ts src/features/quick-setup/windows-config.mjs src/features/quick-setup/quick-setup-dialog.tsx src/features/quick-setup/__tests__/windows-tools.test.ts src/features/get-started/index.tsx src/features/home/components/sections/how-it-works.tsx rsbuild.config.ts
       - run: bun run build
       - name: Package compiled website
         run: |
