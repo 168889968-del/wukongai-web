@@ -1,5 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import type { RenderOptions } from '@testing-library/react'
+import { createInstance } from 'i18next'
+import { I18nextProvider } from 'react-i18next'
 import { describe, expect, it, vi } from 'vitest'
+
+import en from '@/i18n/locales/en.json'
+import zh from '@/i18n/locales/zh.json'
 
 import { RechargeFormCard } from '../components/recharge-form-card'
 import type { TopupInfo } from '../types'
@@ -15,7 +21,8 @@ const topupInfo: TopupInfo = {
 }
 
 function renderRecharge(
-  overrides: Partial<React.ComponentProps<typeof RechargeFormCard>> = {}
+  overrides: Partial<React.ComponentProps<typeof RechargeFormCard>> = {},
+  options?: RenderOptions
 ) {
   const props = {
     topupInfo,
@@ -40,11 +47,33 @@ function renderRecharge(
     hidePaymentMethods: true,
     ...overrides,
   }
-  render(<RechargeFormCard {...props} />)
+  render(<RechargeFormCard {...props} />, options)
   return props
 }
 
 describe('embedded recharge packages', () => {
+  it('loads Chinese package labels from the real application translation namespace', async () => {
+    const i18n = createInstance()
+    await i18n.init({
+      lng: 'zhCN',
+      fallbackLng: 'en',
+      resources: { en, zhCN: zh },
+      nsSeparator: false,
+      interpolation: { escapeValue: false },
+    })
+    renderRecharge(
+      {},
+      {
+        wrapper: ({ children }) => (
+          <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
+        ),
+      }
+    )
+    expect(screen.getByText('充值套餐')).toBeVisible()
+    expect(screen.getByText('额度以美元计入账户')).toBeVisible()
+    expect(screen.getByRole('button', { name: /大额定制/ })).toBeVisible()
+    expect(screen.queryByText('Recharge packages')).not.toBeInTheDocument()
+  })
   it('marks the initial amount selected and shows credit separately from the payment price', () => {
     renderRecharge()
     const first = screen.getByRole('button', { name: /获得 25 美元额度/ })
