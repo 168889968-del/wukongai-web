@@ -21,7 +21,7 @@ export function CommunityEntry() {
       open={open}
       onOpenChange={setOpen}
       title={t('加入交流群')}
-      description={t('扫码入羣，获取产品动态与技术支持。')}
+      description={t('扫码加入 QQ 群，获取产品动态与技术支持。')}
       contentClassName='auth-community-dialog sm:max-w-[770px]'
       headerClassName='auth-community-dialog-header'
       titleClassName='auth-community-dialog-title'
