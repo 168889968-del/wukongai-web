@@ -42,7 +42,7 @@ chmod 600 "$SWAPF"
 mkswap "$SWAPF" >/dev/null
 swapon "$SWAPF"
 docker run --rm -e NODE_ENV=development -v "$APP/web":/app -w /app oven/bun:1 \
-  sh -c "bun install --frozen-lockfile || bun install; bun run build" > /tmp/wkbuild.log 2>&1 || {
+  sh -c "(bun install --frozen-lockfile || bun install) && NODE_ENV=production bun run build" > /tmp/wkbuild.log 2>&1 || {
   tail -n 40 /tmp/wkbuild.log
   echo
   echo "===== 前端编译失败 BUILD_FAILED ====="

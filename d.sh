@@ -34,7 +34,7 @@ swapon "$SWAPF"
 free -h | head -3
 
 echo "[4/5] 安装依赖并编译，第一次需要 5 到 10 分钟，请耐心等待 ..."
-docker run --rm -e NODE_ENV=development -v /tmp/wkbuild:/app -w /app oven/bun:1 sh -c "bun install --frozen-lockfile || bun install; bun run build" > /tmp/wkbuild.log 2>&1 || {
+docker run --rm -e NODE_ENV=development -v /tmp/wkbuild:/app -w /app oven/bun:1 sh -c "(bun install --frozen-lockfile || bun install) && NODE_ENV=production bun run build" > /tmp/wkbuild.log 2>&1 || {
   echo
   tail -n 40 /tmp/wkbuild.log
   echo
