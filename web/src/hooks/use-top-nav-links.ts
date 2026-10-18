@@ -91,7 +91,7 @@ export function useTopNavLinks(): TopNavLink[] {
 
   links.push({
     title: t('Referral Program'),
-    href: '/wallet',
+    href: isAuthed ? '/wallet?section=referral' : '/wallet',
     requiresAuth: !isAuthed,
   })
   links.push({

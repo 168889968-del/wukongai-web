@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
+import { Gift, WalletCards } from 'lucide-react'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -28,6 +29,7 @@ import { ThemeSwitch } from '@/components/theme-switch'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SystemUpdateAction } from '@/features/system-update/system-update-action'
+import { RechargeDialog } from '@/features/wallet/components/recharge-dialog'
 import { useNotifications } from '@/hooks/use-notifications'
 import { useSystemConfig } from '@/hooks/use-system-config'
 import { useTopNavLinks } from '@/hooks/use-top-nav-links'
@@ -78,6 +80,7 @@ export function PublicHeader(props: PublicHeaderProps) {
   const navigate = useNavigate()
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [rechargeOpen, setRechargeOpen] = useState(false)
   const [authPromptTarget, setAuthPromptTarget] =
     useState<AuthPromptTarget | null>(null)
   const [authPromptSecondsLeft, setAuthPromptSecondsLeft] =
@@ -210,6 +213,12 @@ export function PublicHeader(props: PublicHeaderProps) {
       if (closeMobile) {
         setMobileOpen(false)
       }
+
+      // 充值: open the recharge dialog on the current page instead of navigating
+      if (link.href.startsWith('/wallet?topup=1')) {
+        event.preventDefault()
+        setRechargeOpen(true)
+      }
     },
     [t]
   )
@@ -257,7 +266,7 @@ export function PublicHeader(props: PublicHeaderProps) {
             </div>
 
             {/* Desktop nav */}
-            <div className='hidden min-w-0 flex-1 items-center justify-center gap-0.5 xl:flex'>
+            <div className='hidden min-w-0 flex-1 items-center justify-center gap-0.5 lg:flex'>
               {links.map((link) => {
                 const isActive = pathname === link.href
                 const isReferral = link.title === t('Referral Program')
@@ -283,7 +292,11 @@ export function PublicHeader(props: PublicHeaderProps) {
                         link.disabled && 'pointer-events-none opacity-50'
                       )}
                     >
-                      {t(link.title)}
+                      <span className='inline-flex items-center gap-1.5'>
+                        {isRecharge && <WalletCards className='size-4' aria-hidden='true' />}
+                        {isReferral && <Gift className='size-4' aria-hidden='true' />}
+                        {t(link.title)}
+                      </span>
                     </a>
                   )
                 }
@@ -309,7 +322,11 @@ export function PublicHeader(props: PublicHeaderProps) {
                       link.disabled && 'pointer-events-none opacity-50'
                     )}
                   >
-                    {t(link.title)}
+                    <span className='inline-flex items-center gap-1.5'>
+                      {isRecharge && <WalletCards className='size-4' aria-hidden='true' />}
+                      {isReferral && <Gift className='size-4' aria-hidden='true' />}
+                      {t(link.title)}
+                    </span>
                   </Link>
                 )
               })}
@@ -344,7 +361,7 @@ export function PublicHeader(props: PublicHeaderProps) {
             </div>
 
             {/* Mobile: compact actions + hamburger */}
-            <div className='flex shrink-0 items-center gap-2 xl:hidden'>
+            <div className='flex shrink-0 items-center gap-2 lg:hidden'>
               {showThemeSwitch && <ThemeSwitch />}
               {showAuthButtons && !loading && isAuthenticated && (
                 <ProfileDropdown />
@@ -383,10 +400,14 @@ export function PublicHeader(props: PublicHeaderProps) {
         </div>
       </header>
 
+      {isAuthenticated && (
+        <RechargeDialog open={rechargeOpen} onOpenChange={setRechargeOpen} />
+      )}
+
       {/* Mobile full-screen overlay */}
       <div
         className={cn(
-          'bg-background/98 fixed inset-0 z-40 backdrop-blur-2xl transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] xl:pointer-events-none xl:hidden',
+          'bg-background/98 fixed inset-0 z-40 backdrop-blur-2xl transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] lg:pointer-events-none lg:hidden',
           mobileOpen
             ? 'pointer-events-auto opacity-100'
             : 'pointer-events-none opacity-0'

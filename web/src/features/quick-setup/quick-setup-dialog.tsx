@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { Download, KeyRound, Loader2, Sparkles } from 'lucide-react'
+import { Download, KeyRound, Loader2, RotateCcw, Sparkles, Terminal } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -35,13 +35,29 @@ import { handleServerError } from '@/lib/handle-server-error'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
 
-type ClientType = 'codex' | 'claude'
+type ClientType = 'codex' | 'claude' | 'gemini' | 'openai'
+type OsType = 'windows' | 'mac'
 
 interface ConfigFile {
+  /** Folder under the user's home directory, e.g. ".codex" */
+  dir: string
   fileName: string
-  location: string
   content: string
 }
+
+const CLIENT_OPTIONS: {
+  value: ClientType
+  label: string
+  hint: string
+  modelRequired: boolean
+}[] = [
+  { value: 'codex', label: 'Codex', hint: 'OpenAI Codex CLI / 桌面版', modelRequired: true },
+  { value: 'claude', label: 'Claude Code', hint: 'Anthropic Claude Code', modelRequired: false },
+  { value: 'gemini', label: 'Gemini CLI', hint: 'Google Gemini CLI', modelRequired: false },
+  { value: 'openai', label: '通用接口', hint: 'Cherry Studio、ChatBox、Cursor 等', modelRequired: false },
+]
+
+const BACKUP_SUFFIX = '.wukongai.bak'
 
 function getServerAddress(): string {
   try {
@@ -58,40 +74,97 @@ function getServerAddress(): string {
   return window.location.origin
 }
 
-function buildCodexFiles(base: string, key: string, model: string): ConfigFile[] {
-  const toml = [
-    'model_provider = "wukongai"',
-    `model = "${model}"`,
-    'model_reasoning_effort = "high"',
-    '',
-    '[model_providers.wukongai]',
-    'name = "WukongAi"',
-    `base_url = "${base}/v1"`,
-    'wire_api = "responses"',
-    'requires_openai_auth = true',
-    '',
-  ].join('\n')
-  const auth = `${JSON.stringify({ OPENAI_API_KEY: key }, null, 2)}\n`
-  return [
-    { fileName: 'config.toml', location: '~/.codex/config.toml', content: toml },
-    { fileName: 'auth.json', location: '~/.codex/auth.json', content: auth },
-  ]
+function buildFiles(
+  client: ClientType,
+  base: string,
+  key: string,
+  model: string
+): ConfigFile[] {
+  if (client === 'codex') {
+    const toml = [
+      'model_provider = "wukongai"',
+      `model = "${model}"`,
+      'model_reasoning_effort = "high"',
+      '',
+      '[model_providers.wukongai]',
+      'name = "WukongAi"',
+      `base_url = "${base}/v1"`,
+      'wire_api = "responses"',
+      'requires_openai_auth = true',
+      '',
+    ].join('\n')
+    return [
+      { dir: '.codex', fileName: 'config.toml', content: toml },
+      {
+        dir: '.codex',
+        fileName: 'auth.json',
+        content: `${JSON.stringify({ OPENAI_API_KEY: key }, null, 2)}\n`,
+      },
+    ]
+  }
+  if (client === 'claude') {
+    const env: Record<string, string> = {
+      ANTHROPIC_BASE_URL: base,
+      ANTHROPIC_AUTH_TOKEN: key,
+    }
+    if (model) env.ANTHROPIC_MODEL = model
+    return [
+      {
+        dir: '.claude',
+        fileName: 'settings.json',
+        content: `${JSON.stringify({ env }, null, 2)}\n`,
+      },
+    ]
+  }
+  if (client === 'gemini') {
+    const lines = [`GOOGLE_GEMINI_BASE_URL=${base}`, `GEMINI_API_KEY=${key}`]
+    if (model) lines.push(`GEMINI_MODEL=${model}`)
+    return [{ dir: '.gemini', fileName: '.env', content: `${lines.join('\n')}\n` }]
+  }
+  return []
 }
 
-function buildClaudeFiles(base: string, key: string, model: string): ConfigFile[] {
-  const env: Record<string, string> = {
-    ANTHROPIC_BASE_URL: base,
-    ANTHROPIC_AUTH_TOKEN: key,
+function buildInstallCommand(os: OsType, files: ConfigFile[]): string {
+  if (os === 'mac') {
+    const parts = files.map((file) => {
+      const path = `~/${file.dir}/${file.fileName}`
+      return [
+        `mkdir -p ~/${file.dir}`,
+        `[ -f ${path} ] && cp ${path} ${path}${BACKUP_SUFFIX}`,
+        `cat > ${path} <<'WUKONGAI_EOF'`,
+        `${file.content}WUKONGAI_EOF`,
+      ].join('\n')
+    })
+    return `${parts.join('\n')}\necho "配置完成，请重启客户端"\n`
   }
-  if (model) env.ANTHROPIC_MODEL = model
-  const settings = `${JSON.stringify({ env }, null, 2)}\n`
-  return [
-    {
-      fileName: 'settings.json',
-      location: '~/.claude/settings.json',
-      content: settings,
-    },
-  ]
+  const parts = files.map((file) =>
+    [
+      `$d = Join-Path $env:USERPROFILE '${file.dir}'`,
+      'New-Item -ItemType Directory -Force -Path $d | Out-Null',
+      `$f = Join-Path $d '${file.fileName}'`,
+      `if (Test-Path $f) { Copy-Item $f "$f${BACKUP_SUFFIX}" -Force }`,
+      "[IO.File]::WriteAllText($f, @'",
+      `${file.content}'@)`,
+    ].join('\n')
+  )
+  return `${parts.join('\n')}\nWrite-Host "配置完成，请重启客户端"\n`
+}
+
+function buildRestoreCommand(os: OsType, files: ConfigFile[]): string {
+  if (os === 'mac') {
+    const parts = files.map((file) => {
+      const path = `~/${file.dir}/${file.fileName}`
+      return `[ -f ${path}${BACKUP_SUFFIX} ] && mv ${path}${BACKUP_SUFFIX} ${path}`
+    })
+    return `${parts.join('\n')}\necho "已恢复原来的配置"\n`
+  }
+  const parts = files.map((file) =>
+    [
+      `$f = Join-Path (Join-Path $env:USERPROFILE '${file.dir}') '${file.fileName}'`,
+      `if (Test-Path "$f${BACKUP_SUFFIX}") { Move-Item "$f${BACKUP_SUFFIX}" $f -Force }`,
+    ].join('\n')
+  )
+  return `${parts.join('\n')}\nWrite-Host "已恢复原来的配置"\n`
 }
 
 function downloadText(fileName: string, content: string) {
@@ -106,6 +179,58 @@ function downloadText(fileName: string, content: string) {
   URL.revokeObjectURL(url)
 }
 
+function detectOs(): OsType {
+  if (typeof navigator === 'undefined') return 'windows'
+  return /Mac|iPhone|iPad|Linux/i.test(navigator.userAgent) ? 'mac' : 'windows'
+}
+
+interface CodeBlockProps {
+  title: string
+  subtitle?: string
+  content: string
+  copyLabel: string
+  onDownload?: () => void
+}
+
+function CodeBlock(props: CodeBlockProps) {
+  const { t } = useTranslation()
+  return (
+    <div className='overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700'>
+      <div className='flex flex-wrap items-center justify-between gap-2 border-b bg-slate-50 px-4 py-2 dark:bg-slate-900'>
+        <div className='min-w-0'>
+          <p className='text-sm font-semibold'>{props.title}</p>
+          {props.subtitle && (
+            <p className='text-muted-foreground truncate text-xs'>{props.subtitle}</p>
+          )}
+        </div>
+        <div className='flex items-center gap-1'>
+          <CopyButton
+            value={props.content}
+            variant='ghost'
+            size='sm'
+            tooltip={t('复制')}
+            successTooltip={t('已复制')}
+            aria-label={props.copyLabel}
+          />
+          {props.onDownload && (
+            <Button
+              variant='ghost'
+              size='sm'
+              onClick={props.onDownload}
+              aria-label={t('下载 {{name}}', { name: props.title })}
+            >
+              <Download className='size-4' />
+            </Button>
+          )}
+        </div>
+      </div>
+      <pre className='max-h-56 overflow-auto bg-slate-950 px-4 py-3 text-xs leading-5 text-sky-100'>
+        <code>{props.content}</code>
+      </pre>
+    </div>
+  )
+}
+
 interface QuickSetupDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -116,11 +241,13 @@ export function QuickSetupDialog(props: QuickSetupDialogProps) {
   const user = useAuthStore((state) => state.auth.user)
   const isAuthenticated = !!user
   const [client, setClient] = useState<ClientType>('codex')
+  const [os, setOs] = useState<OsType>(detectOs)
   const [selectedKeyId, setSelectedKeyId] = useState<number | null>(null)
   const [model, setModel] = useState('')
   const [realKey, setRealKey] = useState('')
   const [revealing, setRevealing] = useState(false)
   const [ccSwitchOpen, setCcSwitchOpen] = useState(false)
+  const [showManual, setShowManual] = useState(false)
 
   const keysQuery = useQuery({
     queryKey: ['quick-setup-keys'],
@@ -151,6 +278,7 @@ export function QuickSetupDialog(props: QuickSetupDialogProps) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setRealKey('')
     setModel('')
+    setShowManual(false)
   }, [props.open])
 
   useEffect(() => {
@@ -184,13 +312,14 @@ export function QuickSetupDialog(props: QuickSetupDialogProps) {
   }
 
   const serverAddress = getServerAddress()
-  let files: ConfigFile[] = []
-  if (realKey && client === 'codex') {
-    files = buildCodexFiles(serverAddress, realKey, model)
-  } else if (realKey) {
-    files = buildClaudeFiles(serverAddress, realKey, model)
-  }
-  const needsModel = client === 'codex' && !model
+  const currentClient =
+    CLIENT_OPTIONS.find((option) => option.value === client) ?? CLIENT_OPTIONS[0]
+  const files = realKey ? buildFiles(client, serverAddress, realKey, model) : []
+  const needsModel = currentClient.modelRequired && !model
+  const installCommand = files.length > 0 ? buildInstallCommand(os, files) : ''
+  const restoreCommand = files.length > 0 ? buildRestoreCommand(os, files) : ''
+  const homePrefix = os === 'mac' ? '~' : '%USERPROFILE%'
+  const terminalName = os === 'mac' ? t('终端') : 'PowerShell'
 
   return (
     <>
@@ -198,23 +327,19 @@ export function QuickSetupDialog(props: QuickSetupDialogProps) {
         open={props.open}
         onOpenChange={props.onOpenChange}
         title={t('一键配置客户端')}
-        description={t('选好密钥和客户端，自动生成填好地址和密钥的配置文件。')}
+        description={t('选好客户端、密钥和模型，自动生成填好地址和密钥的配置。')}
         contentClassName='sm:max-w-2xl'
         bodyClassName='space-y-5'
       >
         {!isAuthenticated ? (
-          <div className='rounded-2xl border border-sky-100 bg-sky-50/60 p-6 text-center'>
+          <div className='rounded-2xl border border-sky-100 bg-sky-50/60 p-6 text-center dark:border-sky-900 dark:bg-sky-950/30'>
             <KeyRound className='mx-auto size-8 text-sky-500' aria-hidden='true' />
             <p className='mt-3 font-medium'>{t('登录后即可一键生成配置')}</p>
             <p className='text-muted-foreground mt-1 text-sm'>
               {t('配置里会自动填入你的 API 密钥，所以需要先登录。')}
             </p>
             <div className='mt-4 flex justify-center gap-2'>
-              <Button
-                variant='outline'
-                className='rounded-full'
-                render={<Link to='/sign-in' />}
-              >
+              <Button variant='outline' className='rounded-full' render={<Link to='/sign-in' />}>
                 {t('登录')}
               </Button>
               <Button
@@ -229,28 +354,23 @@ export function QuickSetupDialog(props: QuickSetupDialogProps) {
           <>
             <section className='space-y-2.5'>
               <Label>{t('1. 选择客户端')}</Label>
-              <div className='grid grid-cols-2 gap-2.5'>
-                {(
-                  [
-                    { value: 'codex', label: 'Codex', hint: 'OpenAI Codex CLI' },
-                    { value: 'claude', label: 'Claude Code', hint: 'Anthropic Claude Code' },
-                  ] as const
-                ).map((option) => (
+              <div className='grid grid-cols-2 gap-2.5 sm:grid-cols-4'>
+                {CLIENT_OPTIONS.map((option) => (
                   <button
                     key={option.value}
                     type='button'
                     aria-pressed={client === option.value}
                     onClick={() => setClient(option.value)}
                     className={cn(
-                      'rounded-2xl border px-4 py-3 text-left transition',
+                      'rounded-2xl border px-3.5 py-3 text-left transition',
                       client === option.value
                         ? 'border-sky-500 bg-sky-50 shadow-[0_0_0_3px_rgba(14,165,233,0.15)] dark:bg-sky-500/10'
-                        : 'border-slate-200 hover:border-sky-300'
+                        : 'border-slate-200 hover:border-sky-300 dark:border-slate-700'
                     )}
                   >
-                    <span className='block font-semibold'>{option.label}</span>
-                    <span className='text-muted-foreground block text-xs'>
-                      {option.hint}
+                    <span className='block font-semibold'>{t(option.label)}</span>
+                    <span className='text-muted-foreground block text-[11px] leading-4'>
+                      {t(option.hint)}
                     </span>
                   </button>
                 ))}
@@ -259,12 +379,13 @@ export function QuickSetupDialog(props: QuickSetupDialogProps) {
 
             <section className='space-y-2.5'>
               <Label>{t('2. 选择 API 密钥')}</Label>
-              {keysQuery.isLoading ? (
+              {keysQuery.isLoading && (
                 <div className='text-muted-foreground flex items-center gap-2 text-sm'>
                   <Loader2 className='size-4 animate-spin' />
                   {t('正在读取你的密钥 ...')}
                 </div>
-              ) : activeKeys.length === 0 ? (
+              )}
+              {!keysQuery.isLoading && activeKeys.length === 0 && (
                 <div className='flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed border-slate-300 p-4 text-sm'>
                   <span>{t('你还没有可用的密钥，先创建一个吧。')}</span>
                   <Button
@@ -275,7 +396,8 @@ export function QuickSetupDialog(props: QuickSetupDialogProps) {
                     {t('去创建密钥')}
                   </Button>
                 </div>
-              ) : (
+              )}
+              {!keysQuery.isLoading && activeKeys.length > 0 && (
                 <div className='flex flex-wrap gap-2'>
                   {activeKeys.map((item) => (
                     <button
@@ -286,8 +408,8 @@ export function QuickSetupDialog(props: QuickSetupDialogProps) {
                       className={cn(
                         'rounded-full border px-3.5 py-1.5 text-sm transition',
                         selectedKeyId === item.id
-                          ? 'border-sky-500 bg-sky-50 text-sky-700 dark:bg-sky-500/10'
-                          : 'border-slate-200 hover:border-sky-300'
+                          ? 'border-sky-500 bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300'
+                          : 'border-slate-200 hover:border-sky-300 dark:border-slate-700'
                       )}
                     >
                       {item.name || `#${item.id}`}
@@ -299,7 +421,7 @@ export function QuickSetupDialog(props: QuickSetupDialogProps) {
 
             <section className='space-y-2.5'>
               <Label htmlFor='quick-setup-model'>
-                {client === 'codex'
+                {currentClient.modelRequired
                   ? t('3. 选择模型（必填）')
                   : t('3. 选择模型（可选，不填则用客户端默认）')}
               </Label>
@@ -309,7 +431,7 @@ export function QuickSetupDialog(props: QuickSetupDialogProps) {
                 options={modelOptions}
                 value={model}
                 onValueChange={(value) => setModel(value ?? '')}
-                placeholder={t('选择或输入模型名称')}
+                placeholder={t('选择或输入模型名称，例如 Grok、DeepSeek 等')}
                 emptyText={t('没有找到模型')}
               />
             </section>
@@ -331,74 +453,140 @@ export function QuickSetupDialog(props: QuickSetupDialogProps) {
               <section className='space-y-3'>
                 {needsModel && (
                   <p className='rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800'>
-                    {t('Codex 需要指定模型，请先在上面选择模型，配置会自动更新。')}
+                    {t('这个客户端需要指定模型，请先在上面选择模型，配置会自动更新。')}
                   </p>
                 )}
-                {files.map((file) => (
-                  <div
-                    key={file.fileName}
-                    className='overflow-hidden rounded-2xl border border-slate-200'
-                  >
-                    <div className='flex flex-wrap items-center justify-between gap-2 border-b bg-slate-50 px-4 py-2 dark:bg-slate-900'>
-                      <div className='min-w-0'>
-                        <p className='text-sm font-semibold'>{file.fileName}</p>
-                        <p className='text-muted-foreground truncate text-xs'>
-                          {t('保存到 {{path}}', { path: file.location })}
-                        </p>
-                      </div>
-                      <div className='flex items-center gap-1'>
+
+                {client === 'openai' ? (
+                  <div className='space-y-2'>
+                    <p className='text-muted-foreground text-sm'>
+                      {t('在客户端里添加「OpenAI 兼容」服务商，填入下面三项即可：')}
+                    </p>
+                    {[
+                      { label: t('接口地址（API Base URL）'), value: `${serverAddress}/v1` },
+                      { label: t('API 密钥'), value: realKey },
+                      { label: t('模型'), value: model || t('（在客户端里选择）') },
+                    ].map((field) => (
+                      <div
+                        key={field.label}
+                        className='flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-2 dark:border-slate-700'
+                      >
+                        <div className='min-w-0'>
+                          <p className='text-muted-foreground text-xs'>{field.label}</p>
+                          <p className='truncate font-mono text-sm'>{field.value}</p>
+                        </div>
                         <CopyButton
-                          value={file.content}
+                          value={field.value}
                           variant='ghost'
                           size='sm'
                           tooltip={t('复制')}
                           successTooltip={t('已复制')}
-                          aria-label={t('复制 {{name}}', { name: file.fileName })}
+                          aria-label={t('复制 {{name}}', { name: field.label })}
                         />
-                        <Button
-                          variant='ghost'
-                          size='sm'
-                          onClick={() => downloadText(file.fileName, file.content)}
-                          aria-label={t('下载 {{name}}', { name: file.fileName })}
-                        >
-                          <Download className='size-4' />
-                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <>
+                    <div className='flex flex-wrap items-center justify-between gap-2'>
+                      <p className='flex items-center gap-1.5 text-sm font-medium'>
+                        <Terminal className='size-4 text-sky-500' aria-hidden='true' />
+                        {t('复制命令，粘贴到{{terminal}}里运行', { terminal: terminalName })}
+                      </p>
+                      <div className='inline-flex rounded-full bg-slate-100 p-1 dark:bg-slate-800'>
+                        {(
+                          [
+                            { value: 'windows', label: 'Windows' },
+                            { value: 'mac', label: 'Mac / Linux' },
+                          ] as const
+                        ).map((option) => (
+                          <button
+                            key={option.value}
+                            type='button'
+                            aria-pressed={os === option.value}
+                            onClick={() => setOs(option.value)}
+                            className={cn(
+                              'rounded-full px-3 py-1 text-xs font-medium transition',
+                              os === option.value
+                                ? 'bg-white text-slate-950 shadow-sm dark:bg-slate-950 dark:text-white'
+                                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                            )}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
                       </div>
                     </div>
-                    <pre className='max-h-56 overflow-auto bg-slate-950 px-4 py-3 text-xs leading-5 text-sky-100'>
-                      <code>{file.content}</code>
-                    </pre>
-                  </div>
-                ))}
+                    <CodeBlock
+                      title={t('一键写入配置')}
+                      subtitle={t('会先把你原来的配置备份成 {{suffix}} 文件', {
+                        suffix: BACKUP_SUFFIX,
+                      })}
+                      content={installCommand}
+                      copyLabel={t('复制配置命令')}
+                    />
+                    <details className='group rounded-2xl border border-slate-200 px-4 py-2.5 text-sm dark:border-slate-700'>
+                      <summary className='flex cursor-pointer list-none items-center gap-1.5 font-medium'>
+                        <RotateCcw className='size-4 text-slate-500' aria-hidden='true' />
+                        {t('想换回原来的配置？')}
+                      </summary>
+                      <div className='mt-3'>
+                        <CodeBlock
+                          title={t('恢复原配置')}
+                          content={restoreCommand}
+                          copyLabel={t('复制恢复命令')}
+                        />
+                      </div>
+                    </details>
+                    <button
+                      type='button'
+                      onClick={() => setShowManual((value) => !value)}
+                      className='text-sm font-medium text-sky-600 hover:text-sky-700'
+                    >
+                      {showManual ? t('收起配置文件') : t('不想用命令？查看配置文件，手动保存')}
+                    </button>
+                    {showManual &&
+                      files.map((file) => (
+                        <CodeBlock
+                          key={file.fileName}
+                          title={file.fileName}
+                          subtitle={t('保存到 {{path}}', {
+                            path: `${homePrefix}/${file.dir}/${file.fileName}`,
+                          })}
+                          content={file.content}
+                          copyLabel={t('复制 {{name}}', { name: file.fileName })}
+                          onDownload={() => downloadText(file.fileName, file.content)}
+                        />
+                      ))}
+                  </>
+                )}
+
                 <p className='text-muted-foreground text-xs leading-5'>
-                  {t(
-                    '保存后重启客户端即可使用。Windows 上 ~ 指的是 C:\\Users\\你的用户名。配置里含有你的密钥，请不要发给别人。'
-                  )}
+                  {t('配置完成后重启客户端即可使用。配置里含有你的密钥，请不要发给别人。')}
                 </p>
-                <div className='flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sky-100 bg-sky-50/60 px-4 py-3'>
-                  <span className='text-sm'>
-                    {t('装了 CC Switch？可以直接导入，不用手动保存文件。')}
-                  </span>
-                  <Button
-                    size='sm'
-                    variant='outline'
-                    className='rounded-full'
-                    onClick={() => setCcSwitchOpen(true)}
-                  >
-                    {t('用 CC Switch 导入')}
-                  </Button>
-                </div>
+
+                {(client === 'codex' || client === 'claude' || client === 'gemini') && (
+                  <div className='flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sky-100 bg-sky-50/60 px-4 py-3 dark:border-sky-900 dark:bg-sky-950/30'>
+                    <span className='text-sm'>
+                      {t('装了 CC Switch？可以直接导入，不用运行命令。')}
+                    </span>
+                    <Button
+                      size='sm'
+                      variant='outline'
+                      className='rounded-full'
+                      onClick={() => setCcSwitchOpen(true)}
+                    >
+                      {t('用 CC Switch 导入')}
+                    </Button>
+                  </div>
+                )}
               </section>
             )}
           </>
         )}
       </Dialog>
       {realKey && (
-        <CCSwitchDialog
-          open={ccSwitchOpen}
-          onOpenChange={setCcSwitchOpen}
-          tokenKey={realKey}
-        />
+        <CCSwitchDialog open={ccSwitchOpen} onOpenChange={setCcSwitchOpen} tokenKey={realKey} />
       )}
     </>
   )

@@ -299,6 +299,7 @@ export function RechargeFormCard({
                 </div>
               )}
 
+              {!embedded && (
               <div className='space-y-2.5 sm:space-y-3'>
                 <Label
                   htmlFor='topup-amount'
@@ -330,6 +331,7 @@ export function RechargeFormCard({
                   </div>}
                 </div>
               </div>
+              )}
 
               {!hidePaymentMethods && <div className='space-y-2.5 sm:space-y-3'>
                 <Label className='text-muted-foreground text-xs font-medium tracking-wider uppercase'>
