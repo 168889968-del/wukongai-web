@@ -22,8 +22,8 @@ rm -rf /tmp/wkbuild/src /tmp/wkbuild/public /tmp/wkbuild/dist
 cp -a /tmp/wkui/web/src /tmp/wkbuild/src
 cp -a /tmp/wkui/web/public /tmp/wkbuild/public
 
-echo "[4/5] 编译中，需要几分钟，请耐心等待 ..."
-docker run --rm -v /tmp/wkbuild:/app -w /app oven/bun:1 bun run build > /tmp/wkbuild.log 2>&1 || {
+echo "[4/5] 安装依赖并编译，第一次需要 5 到 10 分钟，请耐心等待 ..."
+docker run --rm -v /tmp/wkbuild:/app -w /app oven/bun:1 sh -c "bun install --frozen-lockfile || bun install; bun run build" > /tmp/wkbuild.log 2>&1 || {
   echo
   tail -n 30 /tmp/wkbuild.log
   echo
