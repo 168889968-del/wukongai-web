@@ -1,9 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { ArrowRight, ArrowUpRight, ShieldCheck, Sparkles, Zap } from 'lucide-react'
-import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
-import { QuickSetupDialog } from '@/features/quick-setup/quick-setup-dialog'
 import { useSystemConfig } from '@/hooks/use-system-config'
 import { getLobeIcon } from '@/lib/lobe-icon'
 
@@ -14,15 +12,13 @@ interface HeroProps {
 
 export function Hero(props: HeroProps) {
   const { logo, systemName } = useSystemConfig()
-  const [quickSetupOpen, setQuickSetupOpen] = useState(false)
 
   return (
     <section className={`relative overflow-hidden px-5 pt-24 pb-7 sm:px-8 sm:pt-28 md:pb-9 ${props.className ?? ''}`}>
       <div className='mx-auto grid max-w-7xl items-center gap-7 lg:grid-cols-12 lg:gap-8'>
         <div className='lg:col-span-7'>
-          <button
-            type='button'
-            onClick={() => setQuickSetupOpen(true)}
+          <Link
+            to='/get-started'
             className='group mb-5 inline-flex max-w-full items-center gap-2.5 rounded-full border border-sky-200 bg-white/80 py-1.5 pr-4 pl-1.5 text-sm text-slate-600 shadow-sm backdrop-blur transition hover:border-sky-300 hover:bg-white'
           >
             <span className='flex -space-x-1.5' aria-hidden='true'>
@@ -35,7 +31,7 @@ export function Hero(props: HeroProps) {
             <span className='truncate'>ChatGPT、Claude、Grok、DeepSeek 一条命令接入</span>
             <span className='shrink-0 font-semibold text-sky-600'>一键配置</span>
             <ArrowRight className='size-4 shrink-0 text-sky-500 transition group-hover:translate-x-0.5' aria-hidden='true' />
-          </button>
+          </Link>
           <h1 className='max-w-3xl text-[clamp(2.1rem,3.2vw,3.25rem)] leading-[1.12] font-bold tracking-tight text-slate-950'>
             安全、稳定、透明的
             <span className='block text-sky-500'>AI 模型服务</span>
@@ -72,7 +68,6 @@ export function Hero(props: HeroProps) {
           </div>
         </div>
       </div>
-      <QuickSetupDialog open={quickSetupOpen} onOpenChange={setQuickSetupOpen} />
     </section>
   )
 }

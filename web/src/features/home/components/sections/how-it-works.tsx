@@ -187,6 +187,9 @@ export function HowItWorks() {
                 {installCommand}
               </code>
               <CopyButton value={installCommand} variant='ghost' size='sm' tooltip='复制' successTooltip='已复制' aria-label='复制安装命令' />
+              <Link to='/get-started' className='shrink-0 text-sm font-medium text-sky-600 hover:text-sky-700'>
+                跟着向导一步步来 →
+              </Link>
             </div>
           )}
 
