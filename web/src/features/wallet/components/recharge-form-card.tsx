@@ -27,7 +27,9 @@ import {
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { FaQq } from 'react-icons/fa6'
 
+import { CopyButton } from '@/components/copy-button'
 import { Dialog } from '@/components/dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -288,8 +290,10 @@ export function RechargeFormCard({
                   </div>
                   <div
                     className={cn(
-                      'grid grid-cols-2 gap-2.5 pt-2 sm:gap-3',
-                      embedded ? 'sm:grid-cols-3' : 'md:grid-cols-4'
+                      'grid gap-2.5 pt-2 sm:gap-3',
+                      embedded
+                        ? 'grid-cols-1 sm:grid-cols-3'
+                        : 'grid-cols-2 md:grid-cols-4'
                     )}
                   >
                     {presetAmounts.map((preset) => {
@@ -383,10 +387,15 @@ export function RechargeFormCard({
                       <Dialog
                         open={supportOpen}
                         onOpenChange={setSupportOpen}
-                        title={t('Contact QQ support')}
+                        title={t('Custom recharge')}
                         description={t(
-                          'Scan the code to join our QQ group for custom recharge support.'
+                          'For large recharges, please contact your dedicated support representative.'
                         )}
+                        contentClassName='rounded-3xl p-5 sm:max-w-[670px] sm:p-6'
+                        headerClassName='gap-2 pr-8'
+                        titleClassName='text-xl font-medium text-foreground'
+                        descriptionClassName='text-base leading-7 text-muted-foreground'
+                        bodyClassName='pt-5 pb-1'
                         trigger={
                           <Button
                             type='button'
@@ -402,15 +411,25 @@ export function RechargeFormCard({
                           </Button>
                         }
                       >
-                        <div className='flex flex-col items-center gap-4 py-4'>
-                          <img
-                            src='/wukongai-group-qr.png'
-                            alt={t('QQ support group QR code')}
-                            className='size-52 rounded-xl object-contain'
-                          />
-                          <p className='text-muted-foreground text-sm'>
-                            {t('QQ group: 603378289')}
-                          </p>
+                        <div className='border-border bg-muted/20 flex min-h-[74px] items-center justify-between gap-3 rounded-3xl border px-4 py-4'>
+                          <span className='text-muted-foreground min-w-0 text-base font-normal sm:text-lg'>
+                            悟空Ai
+                          </span>
+                          <div className='flex shrink-0 items-center gap-2 sm:gap-3'>
+                            <FaQq
+                              className='size-5 shrink-0 text-sky-500'
+                              aria-hidden='true'
+                            />
+                            <span className='text-foreground text-base font-normal tabular-nums sm:text-xl'>
+                              168889968
+                            </span>
+                            <CopyButton
+                              value='168889968'
+                              aria-label={t('Copy QQ number')}
+                              className='text-foreground ml-1'
+                              iconClassName='size-4'
+                            />
+                          </div>
                         </div>
                       </Dialog>
                     )}

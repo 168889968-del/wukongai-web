@@ -4,6 +4,7 @@ import {
   screen,
   type RenderOptions,
 } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { createInstance } from 'i18next'
 import { I18nextProvider } from 'react-i18next'
 import { describe, expect, it, vi } from 'vitest'
@@ -106,14 +107,23 @@ describe('embedded recharge packages', () => {
   it('opens QQ support without selecting a package or initiating payment', async () => {
     const props = renderRecharge()
     fireEvent.click(screen.getByRole('button', { name: /Custom recharge/ }))
-    expect(await screen.findByRole('dialog')).toHaveTextContent(
-      'QQ group: 603378289'
-    )
+    expect(await screen.findByRole('dialog')).toHaveTextContent('悟空Ai')
     expect(
-      screen.getByRole('img', { name: 'QQ support group QR code' })
-    ).toHaveAttribute('src', '/wukongai-group-qr.png')
+      screen.getByRole('heading', { name: 'Custom recharge' })
+    ).toBeVisible()
+    expect(screen.getByText('168889968')).toBeVisible()
+    expect(screen.queryByRole('img')).not.toBeInTheDocument()
     expect(props.onSelectPreset).not.toHaveBeenCalled()
     expect(props.onPaymentMethodSelect).not.toHaveBeenCalled()
+  })
+
+  it('copies the dedicated support QQ number and confirms the copy', async () => {
+    const user = userEvent.setup()
+    renderRecharge()
+    await user.click(screen.getByRole('button', { name: /Custom recharge/ }))
+    await user.click(screen.getByRole('button', { name: 'Copy QQ number' }))
+    expect(await navigator.clipboard.readText()).toBe('168889968')
+    expect(screen.getByRole('button', { name: 'Copied' })).toBeVisible()
   })
 
   it('keeps redemption available alongside the new safety and credit notices', () => {

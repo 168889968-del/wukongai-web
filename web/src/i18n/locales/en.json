@@ -7292,11 +7292,10 @@
     "Credit is added in USD": "Credit is added in USD",
     "Automatic credit after payment": "Automatic credit after payment",
     "Contact QQ support": "Contact QQ support",
-    "Scan the code to join our QQ group for custom recharge support.": "Scan the code to join our QQ group for custom recharge support.",
     "Custom recharge": "Custom recharge",
-    "QQ support group QR code": "QQ support group QR code",
-    "QQ group: 603378289": "QQ group: 603378289",
     "Payment and credit amounts are verified by the server": "Payment and credit amounts are verified by the server",
-    "Your balance updates automatically after payment": "Your balance updates automatically after payment"
+    "Your balance updates automatically after payment": "Your balance updates automatically after payment",
+    "For large recharges, please contact your dedicated support representative.": "For large recharges, please contact your dedicated support representative.",
+    "Copy QQ number": "Copy QQ number"
   }
 }

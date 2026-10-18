@@ -7292,11 +7292,10 @@
     "Credit is added in USD": "额度以美元计入账户",
     "Automatic credit after payment": "支付成功后自动到账",
     "Contact QQ support": "联系 QQ 客服",
-    "Scan the code to join our QQ group for custom recharge support.": "扫码加入 QQ 群，咨询大额充值与定制方案。",
     "Custom recharge": "大额定制",
-    "QQ support group QR code": "QQ 客服群二维码",
-    "QQ group: 603378289": "QQ群号：603378289",
     "Payment and credit amounts are verified by the server": "支付金额和到账额度均由服务端校验",
-    "Your balance updates automatically after payment": "支付成功后账户额度将自动更新"
+    "Your balance updates automatically after payment": "支付成功后账户额度将自动更新",
+    "For large recharges, please contact your dedicated support representative.": "大额充值请联系专属客服咨询办理。",
+    "Copy QQ number": "复制 QQ 号码"
   }
 }
