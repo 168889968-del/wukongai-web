@@ -31,12 +31,15 @@ import { fetchTokenKey, getApiKeys } from '@/features/keys/api'
 import { CCSwitchDialog } from '@/features/keys/components/dialogs/cc-switch-dialog'
 import type { ApiKey } from '@/features/keys/types'
 import { getUserModels } from '@/lib/api'
+import { getLobeIcon } from '@/lib/lobe-icon'
 import { handleServerError } from '@/lib/handle-server-error'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
 
-type ClientType = 'codex' | 'claude' | 'gemini' | 'openai'
+type ClientType = 'codex' | 'claude' | 'grok' | 'deepseek' | 'gemini' | 'openai'
 type OsType = 'windows' | 'mac'
+
+const API_KEY_ENV = 'WUKONGAI_API_KEY'
 
 interface ConfigFile {
   /** Folder under the user's home directory, e.g. ".codex" */
@@ -45,17 +48,28 @@ interface ConfigFile {
   content: string
 }
 
-const CLIENT_OPTIONS: {
+interface ClientOption {
   value: ClientType
   label: string
   hint: string
+  icon?: string
   modelRequired: boolean
-}[] = [
-  { value: 'codex', label: 'Codex', hint: 'OpenAI Codex CLI / 桌面版', modelRequired: true },
-  { value: 'claude', label: 'Claude Code', hint: 'Anthropic Claude Code', modelRequired: false },
+}
+
+/** The four model families shown first, each with its official client */
+const PRIMARY_OPTIONS: ClientOption[] = [
+  { value: 'codex', label: 'ChatGPT', hint: 'Codex', icon: 'OpenAI', modelRequired: true },
+  { value: 'claude', label: 'Claude', hint: 'Claude Code', icon: 'Claude.Color', modelRequired: false },
+  { value: 'grok', label: 'Grok', hint: 'Grok Build', icon: 'Grok', modelRequired: true },
+  { value: 'deepseek', label: 'DeepSeek', hint: 'DeepSeek Harness', icon: 'DeepSeek.Color', modelRequired: true },
+]
+
+const MORE_OPTIONS: ClientOption[] = [
   { value: 'gemini', label: 'Gemini CLI', hint: 'Google Gemini CLI', modelRequired: false },
   { value: 'openai', label: '通用接口', hint: 'Cherry Studio、ChatBox、Cursor 等', modelRequired: false },
 ]
+
+const CLIENT_OPTIONS: ClientOption[] = [...PRIMARY_OPTIONS, ...MORE_OPTIONS]
 
 const BACKUP_SUFFIX = '.wukongai.bak'
 
@@ -116,6 +130,20 @@ function buildFiles(
       },
     ]
   }
+  if (client === 'grok') {
+    const toml = [
+      '[models]',
+      'default = "wukongai"',
+      '',
+      '[model.wukongai]',
+      `model = "${model}"`,
+      `base_url = "${base}/v1"`,
+      `env_key = "${API_KEY_ENV}"`,
+      'name = "WukongAi"',
+      '',
+    ].join('\n')
+    return [{ dir: '.grok', fileName: 'config.toml', content: toml }]
+  }
   if (client === 'gemini') {
     const lines = [`GOOGLE_GEMINI_BASE_URL=${base}`, `GEMINI_API_KEY=${key}`]
     if (model) lines.push(`GEMINI_MODEL=${model}`)
@@ -124,7 +152,11 @@ function buildFiles(
   return []
 }
 
-function buildInstallCommand(os: OsType, files: ConfigFile[]): string {
+function buildInstallCommand(
+  os: OsType,
+  files: ConfigFile[],
+  apiKeyEnv?: string
+): string {
   if (os === 'mac') {
     const parts = files.map((file) => {
       const path = `~/${file.dir}/${file.fileName}`
@@ -135,9 +167,21 @@ function buildInstallCommand(os: OsType, files: ConfigFile[]): string {
         `${file.content}WUKONGAI_EOF`,
       ].join('\n')
     })
-    return `${parts.join('\n')}\necho "配置完成，请重启客户端"\n`
+    if (apiKeyEnv) {
+      parts.push(
+        [
+          'for rc in ~/.zshrc ~/.bashrc; do',
+          '  touch "$rc"',
+          `  grep -v '^export ${API_KEY_ENV}=' "$rc" > "$rc.wk.tmp"; mv "$rc.wk.tmp" "$rc"`,
+          `  echo 'export ${API_KEY_ENV}="${apiKeyEnv}"' >> "$rc"`,
+          'done',
+          `export ${API_KEY_ENV}="${apiKeyEnv}"`,
+        ].join('\n')
+      )
+    }
+    return `${parts.join('\n')}\necho "配置完成，请重新打开终端后再启动客户端"\n`
   }
-  const parts = files.map((file) =>
+  const winParts = files.map((file) =>
     [
       `$d = Join-Path $env:USERPROFILE '${file.dir}'`,
       'New-Item -ItemType Directory -Force -Path $d | Out-Null',
@@ -147,15 +191,29 @@ function buildInstallCommand(os: OsType, files: ConfigFile[]): string {
       `${file.content}'@)`,
     ].join('\n')
   )
-  return `${parts.join('\n')}\nWrite-Host "配置完成，请重启客户端"\n`
+  if (apiKeyEnv) {
+    winParts.push(
+      `[Environment]::SetEnvironmentVariable('${API_KEY_ENV}', '${apiKeyEnv}', 'User')`
+    )
+  }
+  return `${winParts.join('\n')}\nWrite-Host "配置完成，请重新打开终端后再启动客户端"\n`
 }
 
-function buildRestoreCommand(os: OsType, files: ConfigFile[]): string {
+function buildRestoreCommand(
+  os: OsType,
+  files: ConfigFile[],
+  removeEnv = false
+): string {
   if (os === 'mac') {
     const parts = files.map((file) => {
       const path = `~/${file.dir}/${file.fileName}`
       return `[ -f ${path}${BACKUP_SUFFIX} ] && mv ${path}${BACKUP_SUFFIX} ${path}`
     })
+    if (removeEnv) {
+      parts.push(
+        `for rc in ~/.zshrc ~/.bashrc; do [ -f "$rc" ] && grep -v '^export ${API_KEY_ENV}=' "$rc" > "$rc.wk.tmp" && mv "$rc.wk.tmp" "$rc"; done`
+      )
+    }
     return `${parts.join('\n')}\necho "已恢复原来的配置"\n`
   }
   const parts = files.map((file) =>
@@ -164,6 +222,9 @@ function buildRestoreCommand(os: OsType, files: ConfigFile[]): string {
       `if (Test-Path "$f${BACKUP_SUFFIX}") { Move-Item "$f${BACKUP_SUFFIX}" $f -Force }`,
     ].join('\n')
   )
+  if (removeEnv) {
+    parts.push(`[Environment]::SetEnvironmentVariable('${API_KEY_ENV}', $null, 'User')`)
+  }
   return `${parts.join('\n')}\nWrite-Host "已恢复原来的配置"\n`
 }
 
@@ -316,8 +377,10 @@ export function QuickSetupDialog(props: QuickSetupDialogProps) {
     CLIENT_OPTIONS.find((option) => option.value === client) ?? CLIENT_OPTIONS[0]
   const files = realKey ? buildFiles(client, serverAddress, realKey, model) : []
   const needsModel = currentClient.modelRequired && !model
-  const installCommand = files.length > 0 ? buildInstallCommand(os, files) : ''
-  const restoreCommand = files.length > 0 ? buildRestoreCommand(os, files) : ''
+  const usesEnvKey = client === 'grok'
+  const installCommand =
+    files.length > 0 ? buildInstallCommand(os, files, usesEnvKey ? realKey : undefined) : ''
+  const restoreCommand = files.length > 0 ? buildRestoreCommand(os, files, usesEnvKey) : ''
   const homePrefix = os === 'mac' ? '~' : '%USERPROFILE%'
   const terminalName = os === 'mac' ? t('终端') : 'PowerShell'
 
@@ -353,25 +416,50 @@ export function QuickSetupDialog(props: QuickSetupDialogProps) {
         ) : (
           <>
             <section className='space-y-2.5'>
-              <Label>{t('1. 选择客户端')}</Label>
-              <div className='grid grid-cols-2 gap-2.5 sm:grid-cols-4'>
-                {CLIENT_OPTIONS.map((option) => (
+              <Label>{t('1. 你要用哪个模型？')}</Label>
+              <div className='grid grid-cols-1 gap-2.5 sm:grid-cols-2'>
+                {PRIMARY_OPTIONS.map((option) => (
                   <button
                     key={option.value}
                     type='button'
                     aria-pressed={client === option.value}
                     onClick={() => setClient(option.value)}
                     className={cn(
-                      'rounded-2xl border px-3.5 py-3 text-left transition',
+                      'flex items-center gap-3 rounded-2xl border px-4 py-3 text-left transition',
                       client === option.value
                         ? 'border-sky-500 bg-sky-50 shadow-[0_0_0_3px_rgba(14,165,233,0.15)] dark:bg-sky-500/10'
                         : 'border-slate-200 hover:border-sky-300 dark:border-slate-700'
                     )}
                   >
-                    <span className='block font-semibold'>{t(option.label)}</span>
-                    <span className='text-muted-foreground block text-[11px] leading-4'>
-                      {t(option.hint)}
+                    <span className='flex size-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700'>
+                      {getLobeIcon(option.icon, 24)}
                     </span>
+                    <span className='min-w-0'>
+                      <span className='block font-semibold'>{option.label}</span>
+                      <span className='text-muted-foreground block text-xs'>
+                        {t('使用 {{client}}', { client: option.hint })}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <div className='flex flex-wrap items-center gap-2 text-xs'>
+                <span className='text-muted-foreground'>{t('其他客户端：')}</span>
+                {MORE_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type='button'
+                    aria-pressed={client === option.value}
+                    title={t(option.hint)}
+                    onClick={() => setClient(option.value)}
+                    className={cn(
+                      'rounded-full border px-3 py-1 transition',
+                      client === option.value
+                        ? 'border-sky-500 bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300'
+                        : 'border-slate-200 hover:border-sky-300 dark:border-slate-700'
+                    )}
+                  >
+                    {t(option.label)}
                   </button>
                 ))}
               </div>
@@ -457,12 +545,34 @@ export function QuickSetupDialog(props: QuickSetupDialogProps) {
                   </p>
                 )}
 
-                {client === 'openai' ? (
+                {client === 'deepseek' && (
                   <div className='space-y-2'>
+                    <CodeBlock
+                      title={t('第一步：安装并打开 DeepSeek Harness')}
+                      subtitle={t('需要 Node.js 22.19 或更高版本')}
+                      content={'npx @deepseek-ai/dsh web\n'}
+                      copyLabel={t('复制安装命令')}
+                    />
                     <p className='text-muted-foreground text-sm'>
-                      {t('在客户端里添加「OpenAI 兼容」服务商，填入下面三项即可：')}
+                      {t('第二步：在打开的页面进入「Settings → Models → Add a custom provider」，填入下面几项：')}
                     </p>
+                  </div>
+                )}
+
+                {client === 'openai' || client === 'deepseek' ? (
+                  <div className='space-y-2'>
+                    {client === 'openai' && (
+                      <p className='text-muted-foreground text-sm'>
+                        {t('在客户端里添加「OpenAI 兼容」服务商，填入下面三项即可：')}
+                      </p>
+                    )}
                     {[
+                      ...(client === 'deepseek'
+                        ? [
+                            { label: t('服务商 ID（Provider id）'), value: 'wukongai' },
+                            { label: t('协议（Protocol）'), value: 'openai-completions' },
+                          ]
+                        : []),
                       { label: t('接口地址（API Base URL）'), value: `${serverAddress}/v1` },
                       { label: t('API 密钥'), value: realKey },
                       { label: t('模型'), value: model || t('（在客户端里选择）') },
