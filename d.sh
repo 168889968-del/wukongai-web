@@ -18,14 +18,14 @@ git clone -q --depth 1 -b ui-redesign https://github.com/168889968-del/wukongai-
 echo "[3/5] 准备编译目录 ..."
 rm -rf /tmp/wkbuild
 cp -a "$WEB" /tmp/wkbuild
-rm -rf /tmp/wkbuild/src /tmp/wkbuild/public /tmp/wkbuild/dist
+rm -rf /tmp/wkbuild/src /tmp/wkbuild/public /tmp/wkbuild/dist /tmp/wkbuild/node_modules
 cp -a /tmp/wkui/web/src /tmp/wkbuild/src
 cp -a /tmp/wkui/web/public /tmp/wkbuild/public
 
 echo "[4/5] 安装依赖并编译，第一次需要 5 到 10 分钟，请耐心等待 ..."
-docker run --rm -v /tmp/wkbuild:/app -w /app oven/bun:1 sh -c "bun install --frozen-lockfile || bun install; bun run build" > /tmp/wkbuild.log 2>&1 || {
+docker run --rm -e NODE_ENV=development -v /tmp/wkbuild:/app -w /app oven/bun:1 sh -c "bun install --frozen-lockfile || bun install; bun run build" > /tmp/wkbuild.log 2>&1 || {
   echo
-  tail -n 30 /tmp/wkbuild.log
+  tail -n 40 /tmp/wkbuild.log
   echo
   echo "===== 编译失败，网站没有任何改动 BUILD_FAILED ====="
   exit 1
