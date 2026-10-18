@@ -22,6 +22,17 @@ rm -rf /tmp/wkbuild/src /tmp/wkbuild/public /tmp/wkbuild/dist /tmp/wkbuild/node_
 cp -a /tmp/wkui/web/src /tmp/wkbuild/src
 cp -a /tmp/wkui/web/public /tmp/wkbuild/public
 
+# 编译很吃内存：临时加 4GB 虚拟内存，脚本结束时自动删除
+SWAPF=/wk-build-swap
+cleanup_swap() { swapoff "$SWAPF" 2>/dev/null || true; rm -f "$SWAPF"; }
+trap cleanup_swap EXIT
+cleanup_swap
+fallocate -l 4G "$SWAPF" || dd if=/dev/zero of="$SWAPF" bs=1M count=4096 status=none
+chmod 600 "$SWAPF"
+mkswap -q "$SWAPF" >/dev/null
+swapon "$SWAPF"
+free -h | head -3
+
 echo "[4/5] 安装依赖并编译，第一次需要 5 到 10 分钟，请耐心等待 ..."
 docker run --rm -e NODE_ENV=development -v /tmp/wkbuild:/app -w /app oven/bun:1 sh -c "bun install --frozen-lockfile || bun install; bun run build" > /tmp/wkbuild.log 2>&1 || {
   echo
