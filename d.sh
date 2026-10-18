@@ -29,7 +29,7 @@ trap cleanup_swap EXIT
 cleanup_swap
 fallocate -l 4G "$SWAPF" || dd if=/dev/zero of="$SWAPF" bs=1M count=4096 status=none
 chmod 600 "$SWAPF"
-mkswap -q "$SWAPF" >/dev/null
+mkswap "$SWAPF" >/dev/null
 swapon "$SWAPF"
 free -h | head -3
 
