@@ -247,7 +247,6 @@ export function RechargeFormCard({
                         topupInfo?.discount?.[preset.value] ||
                         1.0
                       const {
-                        displayValue,
                         actualPrice,
                         savedAmount,
                         hasDiscount,
@@ -279,8 +278,8 @@ export function RechargeFormCard({
                             {formatCurrency(actualPrice)}
                           </div>
                           <div className='text-muted-foreground mt-1 w-full text-xs leading-5'>
-                            {t('获得 {{amount}} 额度', {
-                              amount: formatNumber(displayValue),
+                            {t('获得 {{amount}} 美元额度', {
+                              amount: formatNumber(preset.value),
                             })}
                           </div>
                           {hasDiscount && savedAmount > 0 && (

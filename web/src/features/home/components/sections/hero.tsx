@@ -1,7 +1,10 @@
 import { Link } from '@tanstack/react-router'
-import { ArrowUpRight, Image, ShieldCheck, Sparkles, Zap } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, ShieldCheck, Sparkles, Zap } from 'lucide-react'
+import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { QuickSetupDialog } from '@/features/quick-setup/quick-setup-dialog'
+import { useSystemConfig } from '@/hooks/use-system-config'
 
 interface HeroProps {
   className?: string
@@ -9,10 +12,22 @@ interface HeroProps {
 }
 
 export function Hero(props: HeroProps) {
+  const { logo, systemName } = useSystemConfig()
+  const [quickSetupOpen, setQuickSetupOpen] = useState(false)
+
   return (
     <section className={`relative overflow-hidden px-5 pt-24 pb-7 sm:px-8 sm:pt-28 md:pb-9 ${props.className ?? ''}`}>
       <div className='mx-auto grid max-w-7xl items-center gap-7 lg:grid-cols-12 lg:gap-8'>
         <div className='lg:col-span-7'>
+          <button
+            type='button'
+            onClick={() => setQuickSetupOpen(true)}
+            className='group mb-5 inline-flex max-w-full items-center gap-2.5 rounded-full border border-sky-200 bg-white/80 py-1.5 pr-4 pl-1.5 text-sm text-slate-600 shadow-sm backdrop-blur transition hover:border-sky-300 hover:bg-white'
+          >
+            <span className='rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 px-2.5 py-1 text-xs font-semibold text-white'>一键配置</span>
+            <span className='truncate'>Codex、Claude Code 自动生成配置，复制即用</span>
+            <ArrowRight className='size-4 shrink-0 text-sky-500 transition group-hover:translate-x-0.5' aria-hidden='true' />
+          </button>
           <h1 className='max-w-3xl text-[clamp(2.1rem,3.2vw,3.25rem)] leading-[1.12] font-bold tracking-tight text-slate-950'>
             安全、稳定、透明的
             <span className='block text-sky-500'>AI 模型服务</span>
@@ -38,7 +53,7 @@ export function Hero(props: HeroProps) {
           <div className='relative flex min-h-[250px] flex-col justify-center overflow-hidden rounded-[1.75rem] bg-blue-600 p-6 text-white shadow-[0_22px_58px_-38px_rgba(37,99,235,0.58)] sm:min-h-[270px] sm:p-7'>
             <div aria-hidden='true' className='absolute inset-y-0 right-0 w-2/5 -skew-x-12 translate-x-8 bg-gradient-to-br from-blue-300/75 via-blue-400/60 to-indigo-300/70 blur-[1px]' />
             <div className='relative z-10'>
-              <div className='flex size-10 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/25'><Image className='size-5' /></div>
+              <div className='flex size-12 items-center justify-center overflow-hidden rounded-2xl bg-white p-1.5 shadow-sm ring-1 ring-white/40'>{logo ? <img src={logo} alt={systemName || '悟空Ai'} className='size-full object-contain' /> : null}</div>
               <p className='mt-5 text-sm font-semibold tracking-wide text-blue-50'>GPT Image 2 · AI 图像能力</p>
               <h2 className='mt-1.5 text-3xl leading-tight font-bold'>想法即成图</h2>
               <p className='mt-2 max-w-sm text-sm leading-6 text-blue-50 sm:text-base'>文字生图、参考图创作与图片编辑，一站完成。</p>
@@ -49,6 +64,7 @@ export function Hero(props: HeroProps) {
           </div>
         </div>
       </div>
+      <QuickSetupDialog open={quickSetupOpen} onOpenChange={setQuickSetupOpen} />
     </section>
   )
 }

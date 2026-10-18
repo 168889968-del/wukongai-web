@@ -1,6 +1,8 @@
 import { Link } from '@tanstack/react-router'
-import { KeyRound, Laptop, MessageSquareText, WalletCards } from 'lucide-react'
+import { KeyRound, Laptop, MessageSquareText, Sparkles, WalletCards } from 'lucide-react'
 import { useState } from 'react'
+
+import { QuickSetupDialog } from '@/features/quick-setup/quick-setup-dialog'
 
 type Client = 'codex' | 'claude'
 
@@ -8,11 +10,12 @@ const baseSteps = [
   { title: '安装客户端', description: '在电脑上安装 Codex 或 Claude Code 桌面版。', icon: Laptop },
   { title: '充值账户', description: '在账户余额里充值，按实际调用量扣费。', icon: WalletCards },
   { title: '创建 API 密钥', description: '在控制台生成密钥，并设置需要的额度。', icon: KeyRound },
-  { title: '连接并开始对话', description: '把悟空Ai 地址和密钥填入客户端即可使用。', icon: MessageSquareText },
+  { title: '一键配置，开始对话', description: '用「一键配置」生成配置文件，保存后重启客户端即可使用。', icon: MessageSquareText },
 ]
 
 export function HowItWorks() {
   const [client, setClient] = useState<Client>('codex')
+  const [quickSetupOpen, setQuickSetupOpen] = useState(false)
   const endpoint = client === 'codex' ? 'https://wukongai.work/v1' : 'https://wukongai.work'
 
   return (
@@ -28,7 +31,7 @@ export function HowItWorks() {
               <button type='button' onClick={() => setClient('codex')} aria-pressed={client === 'codex'} className={`rounded-full px-4 py-2 text-sm transition ${client === 'codex' ? 'bg-slate-950 text-white shadow-sm' : 'text-slate-600 hover:text-slate-950'}`}>Codex</button>
               <button type='button' onClick={() => setClient('claude')} aria-pressed={client === 'claude'} className={`rounded-full px-4 py-2 text-sm transition ${client === 'claude' ? 'bg-slate-950 text-white shadow-sm' : 'text-slate-600 hover:text-slate-950'}`}>Claude Code</button>
             </div>
-            <Link to='/keys' className='inline-flex h-10 items-center gap-2 rounded-full bg-sky-500 px-4 text-sm font-medium text-white transition hover:bg-sky-600'><KeyRound className='size-4' />配置 {client === 'codex' ? 'Codex' : 'Claude Code'}</Link>
+            <button type='button' onClick={() => setQuickSetupOpen(true)} className='inline-flex h-10 items-center gap-2 rounded-full bg-sky-500 px-4 text-sm font-medium text-white transition hover:bg-sky-600'><Sparkles className='size-4' />一键配置 {client === 'codex' ? 'Codex' : 'Claude Code'}</button>
           </div>
         </div>
         <div className='relative mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4'>
@@ -52,6 +55,7 @@ export function HowItWorks() {
           <span className='text-slate-300'>悟空Ai API 地址</span><code className='max-w-full overflow-x-auto text-sky-200'>{endpoint}</code>
         </div>
       </div>
+      <QuickSetupDialog open={quickSetupOpen} onOpenChange={setQuickSetupOpen} />
     </section>
   )
 }
