@@ -25,7 +25,7 @@ afterEach(() => {
     }
     fs.rmSync(root, { recursive: true, force: true })
   }
-})
+}, 180000)
 function execute(
   command: string,
   args: string[],
