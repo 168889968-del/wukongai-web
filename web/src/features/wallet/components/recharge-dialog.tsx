@@ -16,7 +16,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Clock3, ShieldCheck } from 'lucide-react'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -266,15 +265,17 @@ export function RechargeDialog(props: RechargeDialogProps) {
         onOpenChange={props.onOpenChange}
         title={t('Account Recharge')}
         description={t('Choose an amount and payment method')}
-        contentHeight='min(86vh, 780px)'
-        contentClassName='max-w-[calc(100vw-1.5rem)] overflow-hidden p-0 sm:max-w-5xl sm:p-0 xl:max-w-6xl'
+        contentHeight='min(88dvh, 800px)'
+        contentClassName='max-w-[calc(100vw-1.5rem)] gap-0 overflow-hidden rounded-3xl p-0 sm:max-w-5xl sm:p-0 xl:max-w-7xl'
         headerClassName='sr-only'
-        bodyClassName='px-0 py-0'
+        bodyClassName='h-full px-0 py-0'
       >
-        <div className='grid min-h-[min(86vh,780px)] gap-0 lg:grid-cols-[minmax(0,1fr)_360px]'>
-          <div className='min-h-0 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5'>
-            <div className='mb-4 flex items-center justify-between border-b border-slate-200 pb-4 text-sm'>
-              <span className='text-muted-foreground'>{t('Recharge Account')}</span>
+        <div className='grid min-h-full gap-0 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_320px]'>
+          <div className='min-w-0 px-4 py-5 sm:px-7 sm:py-6 lg:min-h-0 lg:overflow-y-auto'>
+            <div className='mb-6 flex items-center justify-between gap-4 border-b pr-7 pb-5 text-sm lg:pr-0'>
+              <span className='text-muted-foreground'>
+                {t('Recharge Account')}
+              </span>
               <span className='font-medium'>{username || '—'}</span>
             </div>
             <RechargeFormCard
@@ -312,79 +313,128 @@ export function RechargeDialog(props: RechargeDialogProps) {
               hidePaymentMethods
             />
           </div>
-          <aside className='flex min-h-0 flex-col border-t bg-slate-50/80 p-5 sm:p-6 lg:border-t-0 lg:border-l'>
+          <aside className='bg-muted/30 flex flex-col border-t p-5 sm:p-6 lg:min-h-0 lg:overflow-y-auto lg:border-t-0 lg:border-l lg:pt-10'>
             <div className='text-center'>
-              <p className='text-sm text-muted-foreground'>{t('Amount Due')}</p>
-              <p className='mt-1 font-mono text-4xl font-bold tracking-tight text-sky-500'>{formatCurrency(paymentAmount)}</p>
-              <p className='mt-2 text-sm text-muted-foreground'>{t('{{amount}} 美元额度', { amount: formatNumber(topupAmount) })}</p>
+              <p className='text-muted-foreground text-sm'>{t('Amount Due')}</p>
+              <p className='mt-3 text-4xl font-semibold tracking-tight text-sky-500'>
+                <span className='mr-1 text-lg'>¥</span>
+                {formatCurrency(paymentAmount)}
+              </p>
+              <p className='text-muted-foreground mt-2 text-sm'>
+                {t('{{amount}} 美元额度', {
+                  amount: formatNumber(topupAmount),
+                })}
+              </p>
             </div>
             <div className='my-5 border-t' />
             <div className='space-y-2.5'>
               <p className='text-sm font-medium'>{t('Payment Method')}</p>
               <div className='grid grid-cols-2 gap-2'>
                 {topupInfo?.pay_methods?.map((method) => {
-                  const minimum = Math.max(method.min_topup || 0, getMinTopupAmount(topupInfo))
+                  const minimum = Math.max(
+                    method.min_topup || 0,
+                    getMinTopupAmount(topupInfo)
+                  )
                   const selected = selectedPaymentMethod?.type === method.type
                   return (
                     <button
                       key={method.type}
                       type='button'
                       aria-pressed={selected}
-                      disabled={minimum > topupAmount || paymentLoading !== null}
+                      disabled={
+                        minimum > topupAmount || paymentLoading !== null
+                      }
                       onClick={() => handlePaymentMethodChange(method)}
                       className={`flex min-h-11 items-center gap-2 rounded-xl border px-3 text-left text-sm transition ${selected ? 'border-sky-400 bg-white text-sky-700 shadow-sm' : 'border-slate-200 bg-white/70 text-slate-700 hover:border-sky-200'} disabled:cursor-not-allowed disabled:opacity-50`}
                     >
-                      {getPaymentIcon(method.type, 'size-4 shrink-0', method.icon, method.name)}
+                      {getPaymentIcon(
+                        method.type,
+                        'size-4 shrink-0',
+                        method.icon,
+                        method.name
+                      )}
                       <span className='truncate'>{method.name}</span>
                     </button>
                   )
                 })}
-                {topupInfo?.enable_stripe_topup && !topupInfo.pay_methods?.some((method) => method.type === PAYMENT_TYPES.STRIPE) && (
-                  <button
-                    type='button'
-                    aria-pressed={selectedPaymentMethod?.type === PAYMENT_TYPES.STRIPE}
-                    onClick={() => handlePaymentMethodChange({ name: 'Stripe', type: PAYMENT_TYPES.STRIPE })}
-                    className={`flex min-h-11 items-center gap-2 rounded-xl border px-3 text-left text-sm transition ${selectedPaymentMethod?.type === PAYMENT_TYPES.STRIPE ? 'border-sky-400 bg-white text-sky-700 shadow-sm' : 'border-slate-200 bg-white/70 text-slate-700 hover:border-sky-200'}`}
-                  >
-                    {getPaymentIcon(PAYMENT_TYPES.STRIPE, 'size-4 shrink-0')}
-                    <span>Stripe</span>
-                  </button>
-                )}
-                {topupInfo?.enable_waffo_topup && topupInfo.waffo_pay_methods?.map((method, index) => {
-                  const selected = selectedPaymentMethod?.type === PAYMENT_TYPES.WAFFO && selectedWaffoMethodIndex === index
-                  const disabled = (topupInfo.waffo_min_topup || 0) > topupAmount
-                  return (
+                {topupInfo?.enable_stripe_topup &&
+                  !topupInfo.pay_methods?.some(
+                    (method) => method.type === PAYMENT_TYPES.STRIPE
+                  ) && (
                     <button
-                      key={`${method.payMethodType ?? 'waffo'}-${method.payMethodName ?? method.name}`}
                       type='button'
-                      aria-pressed={selected}
-                      disabled={disabled || paymentLoading !== null}
-                      onClick={() => handleWaffoMethodSelect(method, index)}
-                      className={`flex min-h-11 items-center gap-2 rounded-xl border px-3 text-left text-sm transition ${selected ? 'border-sky-400 bg-white text-sky-700 shadow-sm' : 'border-slate-200 bg-white/70 text-slate-700 hover:border-sky-200'} disabled:cursor-not-allowed disabled:opacity-50`}
+                      aria-pressed={
+                        selectedPaymentMethod?.type === PAYMENT_TYPES.STRIPE
+                      }
+                      onClick={() =>
+                        handlePaymentMethodChange({
+                          name: 'Stripe',
+                          type: PAYMENT_TYPES.STRIPE,
+                        })
+                      }
+                      className={`flex min-h-11 items-center gap-2 rounded-xl border px-3 text-left text-sm transition ${selectedPaymentMethod?.type === PAYMENT_TYPES.STRIPE ? 'border-sky-400 bg-white text-sky-700 shadow-sm' : 'border-slate-200 bg-white/70 text-slate-700 hover:border-sky-200'}`}
                     >
-                      {method.icon ? <img src={method.icon} alt='' className='size-4 shrink-0 object-contain' /> : getPaymentIcon(PAYMENT_TYPES.WAFFO, 'size-4 shrink-0')}
-                      <span className='truncate'>{method.name}</span>
+                      {getPaymentIcon(PAYMENT_TYPES.STRIPE, 'size-4 shrink-0')}
+                      <span>Stripe</span>
                     </button>
-                  )
-                })}
+                  )}
+                {topupInfo?.enable_waffo_topup &&
+                  topupInfo.waffo_pay_methods?.map((method, index) => {
+                    const selected =
+                      selectedPaymentMethod?.type === PAYMENT_TYPES.WAFFO &&
+                      selectedWaffoMethodIndex === index
+                    const disabled =
+                      (topupInfo.waffo_min_topup || 0) > topupAmount
+                    return (
+                      <button
+                        key={`${method.payMethodType ?? 'waffo'}-${method.payMethodName ?? method.name}`}
+                        type='button'
+                        aria-pressed={selected}
+                        disabled={disabled || paymentLoading !== null}
+                        onClick={() => handleWaffoMethodSelect(method, index)}
+                        className={`flex min-h-11 items-center gap-2 rounded-xl border px-3 text-left text-sm transition ${selected ? 'border-sky-400 bg-white text-sky-700 shadow-sm' : 'border-slate-200 bg-white/70 text-slate-700 hover:border-sky-200'} disabled:cursor-not-allowed disabled:opacity-50`}
+                      >
+                        {method.icon ? (
+                          <img
+                            src={method.icon}
+                            alt=''
+                            className='size-4 shrink-0 object-contain'
+                          />
+                        ) : (
+                          getPaymentIcon(PAYMENT_TYPES.WAFFO, 'size-4 shrink-0')
+                        )}
+                        <span className='truncate'>{method.name}</span>
+                      </button>
+                    )
+                  })}
               </div>
-              {!topupInfo?.pay_methods?.length && !topupInfo?.enable_stripe_topup && !(topupInfo?.enable_waffo_topup && topupInfo.waffo_pay_methods?.length) && (
-                <p className='rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800'>{t('No payment methods available. Please contact administrator.')}</p>
-              )}
+              {!topupInfo?.pay_methods?.length &&
+                !topupInfo?.enable_stripe_topup &&
+                !(
+                  topupInfo?.enable_waffo_topup &&
+                  topupInfo.waffo_pay_methods?.length
+                ) && (
+                  <p className='rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800'>
+                    {t(
+                      'No payment methods available. Please contact administrator.'
+                    )}
+                  </p>
+                )}
             </div>
-            <div className='flex-1' />
+            <div className='min-h-8 flex-1' />
             <Button
               className='mt-4 h-11 rounded-full bg-sky-500 text-base font-semibold text-white hover:bg-sky-600'
-              disabled={calculating || paymentLoading !== null || !selectedPaymentMethod}
-              onClick={() => selectedPaymentMethod && handlePaymentMethodSelect(selectedPaymentMethod)}
+              disabled={
+                calculating || paymentLoading !== null || !selectedPaymentMethod
+              }
+              onClick={() =>
+                selectedPaymentMethod &&
+                handlePaymentMethodSelect(selectedPaymentMethod)
+              }
             >
               {t('Continue to payment')}
             </Button>
-            <div className='mt-4 grid grid-cols-2 gap-2 text-xs text-muted-foreground'>
-              <div className='flex items-center gap-2 rounded-xl bg-white p-3'><ShieldCheck className='size-4 text-emerald-500' />{t('Secure payment')}</div>
-              <div className='flex items-center gap-2 rounded-xl bg-white p-3'><Clock3 className='size-4 text-sky-500' />{t('Automatic credit')}</div>
-            </div>
-            <p className='mt-3 text-center text-[11px] leading-5 text-muted-foreground'>
+            <p className='text-muted-foreground mt-3 text-center text-[11px] leading-5'>
               {t('支付完成后额度自动到账，可在「订单记录」中查看每一笔充值。')}
             </p>
           </aside>

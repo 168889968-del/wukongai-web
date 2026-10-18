@@ -1,0 +1,7 @@
+web/node_modules/
+web/dist/
+web/.tanstack/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example

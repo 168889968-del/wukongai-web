@@ -2805,7 +2805,7 @@
     "footer.columns.related.links.oneApi": "One API",
     "footer.columns.related.title": "Các Dự Án Liên Quan",
     "footer.defaultCopyright": "Bản quyền được bảo lưu.",
-    "footer.new\u0061pi.projectAttributionSuffix": "Bản quyền được bảo lưu. Được thiết kế và phát triển bởi các cộng tác viên dự án.",
+    "footer.newapi.projectAttributionSuffix": "Bản quyền được bảo lưu. Được thiết kế và phát triển bởi các cộng tác viên dự án.",
     "For advanced custom channels this applies only to /v1/responses routes without protocol conversion.": "Với kênh tùy chỉnh nâng cao, thiết lập này chỉ áp dụng cho các route /v1/responses không chuyển đổi giao thức.",
     "GitHub ID is empty!": "ID GitHub trống!",
     "For channels added after May 10, 2025, no need to remove \".\" from model names during deployment": "Đối với các kênh được thêm sau ngày 10 tháng 5 năm 2025, không cần loại bỏ \".\" khỏi tên mô hình trong quá trình triển khai",
@@ -7277,5 +7277,15 @@
     "Zhipu GLM": "Zhipu GLM",
     "Zhipu V4": "Zhipu V4",
     "Zoom": "Zoom"
-  }
+  },
+  "Recharge packages": "Recharge packages",
+  "Credit is added in USD": "Credit is added in USD",
+  "Automatic credit after payment": "Automatic credit after payment",
+  "Contact QQ support": "Contact QQ support",
+  "Scan the code to join our QQ group for custom recharge support.": "Scan the code to join our QQ group for custom recharge support.",
+  "Custom recharge": "Custom recharge",
+  "QQ support group QR code": "QQ support group QR code",
+  "QQ group: 603378289": "QQ group: 603378289",
+  "Payment and credit amounts are verified by the server": "Payment and credit amounts are verified by the server",
+  "Your balance updates automatically after payment": "Your balance updates automatically after payment"
 }

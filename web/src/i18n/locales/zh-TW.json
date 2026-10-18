@@ -2805,7 +2805,7 @@
     "footer.columns.related.links.oneApi": "One API",
     "footer.columns.related.title": "相關項目",
     "footer.defaultCopyright": "版權所有。",
-    "footer.new\u0061pi.projectAttributionSuffix": "版權所有，由項目貢獻者設計與開發。",
+    "footer.newapi.projectAttributionSuffix": "版權所有，由項目貢獻者設計與開發。",
     "For advanced custom channels this applies only to /v1/responses routes without protocol conversion.": "進階自訂渠道僅對 /v1/responses 且不做協定轉換的路由生效。",
     "GitHub ID is empty!": "GitHub ID 為空！",
     "For channels added after May 10, 2025, no need to remove \".\" from model names during deployment": "對於 2025 年 5 月 10 日之後新增的渠道，在部署時無需從模型名稱中移除 \".\"",
@@ -7277,5 +7277,15 @@
     "Zhipu GLM": "智譜GLM",
     "Zhipu V4": "智譜 V4",
     "Zoom": "縮放"
-  }
+  },
+  "Recharge packages": "儲值套餐",
+  "Credit is added in USD": "額度以美元計入帳戶",
+  "Automatic credit after payment": "付款成功後自動到帳",
+  "Contact QQ support": "聯絡 QQ 客服",
+  "Scan the code to join our QQ group for custom recharge support.": "掃碼加入 QQ 群，諮詢大額儲值與客製方案。",
+  "Custom recharge": "大額客製",
+  "QQ support group QR code": "QQ 客服群 QR 碼",
+  "QQ group: 603378289": "QQ群號：603378289",
+  "Payment and credit amounts are verified by the server": "付款金額和到帳額度均由伺服器驗證",
+  "Your balance updates automatically after payment": "付款成功後帳戶額度將自動更新"
 }

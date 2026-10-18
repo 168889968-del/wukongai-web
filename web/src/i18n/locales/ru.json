@@ -2805,7 +2805,7 @@
     "footer.columns.related.links.oneApi": "Один API",
     "footer.columns.related.title": "Связанные проекты",
     "footer.defaultCopyright": "Все права защищены.",
-    "footer.new\u0061pi.projectAttributionSuffix": "Все права защищены. Разработано участниками проекта.",
+    "footer.newapi.projectAttributionSuffix": "Все права защищены. Разработано участниками проекта.",
     "For advanced custom channels this applies only to /v1/responses routes without protocol conversion.": "Для расширенных пользовательских каналов это действует только для маршрутов /v1/responses без преобразования протокола.",
     "GitHub ID is empty!": "GitHub ID не указан!",
     "For channels added after May 10, 2025, no need to remove \".\" from model names during deployment": "Для каналов, добавленных после 10 мая 2025 г., не нужно удалять \".\" из имён моделей при развёртывании",
@@ -7277,5 +7277,15 @@
     "Zhipu GLM": "Zhipu GLM",
     "Zhipu V4": "Zhipu V4",
     "Zoom": "Zoom"
-  }
+  },
+  "Recharge packages": "Recharge packages",
+  "Credit is added in USD": "Credit is added in USD",
+  "Automatic credit after payment": "Automatic credit after payment",
+  "Contact QQ support": "Contact QQ support",
+  "Scan the code to join our QQ group for custom recharge support.": "Scan the code to join our QQ group for custom recharge support.",
+  "Custom recharge": "Custom recharge",
+  "QQ support group QR code": "QQ support group QR code",
+  "QQ group: 603378289": "QQ group: 603378289",
+  "Payment and credit amounts are verified by the server": "Payment and credit amounts are verified by the server",
+  "Your balance updates automatically after payment": "Your balance updates automatically after payment"
 }

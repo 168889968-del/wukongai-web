@@ -1,0 +1,54 @@
+name: Build website release
+
+on:
+  push:
+    branches: [ui-redesign, codex/recharge-ui]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: frontend-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: web
+    env:
+      GOMEMLIMIT: 1536MiB
+      GOMAXPROCS: '2'
+      NODE_OPTIONS: --max-old-space-size=3072
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+      - run: bun install --frozen-lockfile
+      - name: Check types
+        run: bun run typecheck
+      - name: Test recharge interactions
+        run: bun run test src/features/wallet/__tests__/recharge-layout.test.tsx
+      - name: Lint changed recharge components
+        run: bunx oxlint -c .oxlintrc.json src/features/wallet/components/recharge-dialog.tsx src/features/wallet/components/recharge-form-card.tsx src/features/wallet/__tests__/recharge-layout.test.tsx
+      - name: Check recharge formatting
+        run: bunx oxfmt --check src/features/wallet/components/recharge-dialog.tsx src/features/wallet/components/recharge-form-card.tsx src/features/wallet/__tests__/recharge-layout.test.tsx
+      - run: bun run build
+      - name: Package compiled website
+        run: |
+          printf '%s\n' "$GITHUB_SHA" > dist/build-commit.txt
+          tar czf ../wukongai-web.tgz dist
+          cd ..
+          sha256sum wukongai-web.tgz > wukongai-web.tgz.sha256
+      - name: Publish compiled release
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="web-${GITHUB_SHA:0:12}"
+          gh release view "$tag" >/dev/null 2>&1 || gh release create "$tag" --target "$GITHUB_SHA" --title "Website ${GITHUB_SHA:0:12}" --notes 'Compiled website assets. Deploy with scripts/update-web.sh; no server-side build is required.' --latest
+          gh release upload "$tag" wukongai-web.tgz wukongai-web.tgz.sha256 --clobber
