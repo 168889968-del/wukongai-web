@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Clock3, QrCode, ShieldCheck } from 'lucide-react'
+import { Clock3, ShieldCheck } from 'lucide-react'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -266,12 +266,12 @@ export function RechargeDialog(props: RechargeDialogProps) {
         onOpenChange={props.onOpenChange}
         title={t('Account Recharge')}
         description={t('Choose an amount and payment method')}
-        contentHeight='min(76vh, 720px)'
-        contentClassName='max-w-6xl overflow-hidden p-0 sm:p-0'
+        contentHeight='min(86vh, 780px)'
+        contentClassName='max-w-[calc(100vw-1.5rem)] overflow-hidden p-0 sm:max-w-5xl sm:p-0 xl:max-w-6xl'
         headerClassName='sr-only'
         bodyClassName='px-0 py-0'
       >
-        <div className='grid min-h-[min(76vh,720px)] gap-0 lg:grid-cols-[minmax(0,1fr)_340px]'>
+        <div className='grid min-h-[min(86vh,780px)] gap-0 lg:grid-cols-[minmax(0,1fr)_360px]'>
           <div className='min-h-0 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5'>
             <div className='mb-4 flex items-center justify-between border-b border-slate-200 pb-4 text-sm'>
               <span className='text-muted-foreground'>{t('Recharge Account')}</span>
@@ -372,11 +372,7 @@ export function RechargeDialog(props: RechargeDialogProps) {
                 <p className='rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800'>{t('No payment methods available. Please contact administrator.')}</p>
               )}
             </div>
-            <div className='mt-4 flex-1 rounded-2xl border border-dashed border-sky-200 bg-white px-4 py-6 text-center'>
-              <QrCode className='mx-auto size-9 text-sky-500' />
-              <p className='mt-3 text-sm font-medium'>{selectedPaymentMethod?.name ?? t('Choose a payment method')}</p>
-              <p className='mt-1 text-xs leading-5 text-muted-foreground'>{t('The payment QR code will appear on the secure checkout page.')}</p>
-            </div>
+            <div className='flex-1' />
             <Button
               className='mt-4 h-11 rounded-full bg-sky-500 text-base font-semibold text-white hover:bg-sky-600'
               disabled={calculating || paymentLoading !== null || !selectedPaymentMethod}

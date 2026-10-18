@@ -214,7 +214,7 @@ export function RechargeFormCard({
       iconTone='success'
       disableHoverEffect
       className={embedded ? 'rounded-none border-0 bg-transparent shadow-none' : undefined}
-      headerClassName={embedded ? 'border-b-0 px-0 pt-0 !pb-4 sm:px-0 sm:pt-0 sm:!pb-5' : undefined}
+      headerClassName={embedded ? 'hidden' : undefined}
       action={
         onOpenBilling ? (
           <Button
@@ -262,7 +262,7 @@ export function RechargeFormCard({
                           variant='outline'
                           aria-pressed={selectedPreset === preset.value}
                           className={cn(
-                            'wk-topup-preset relative flex min-h-[84px] flex-col items-start justify-center rounded-2xl px-3.5 py-3 text-left whitespace-normal sm:min-h-[96px] sm:px-4',
+                            'wk-topup-preset relative flex min-h-[96px] flex-col items-start justify-center rounded-2xl px-4 pt-5 pb-3.5 text-left whitespace-normal sm:min-h-[112px] sm:px-5',
                             selectedPreset === preset.value
                               ? 'border-sky-500 bg-sky-50 shadow-[0_0_0_3px_rgba(14,165,233,0.15)] hover:bg-sky-50 dark:bg-sky-500/10'
                               : 'border-slate-200 hover:border-sky-300 hover:bg-sky-50/40'
