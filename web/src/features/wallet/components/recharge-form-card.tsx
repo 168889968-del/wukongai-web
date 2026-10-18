@@ -171,7 +171,7 @@ export function RechargeFormCard({
         data-card-hover='false'
         className={cn(
           'gap-0 overflow-hidden py-0',
-          embedded && 'rounded-none border-0 bg-transparent shadow-none'
+          embedded && 'rounded-none border-0 bg-transparent shadow-none ring-0'
         )}
       >
         <CardHeader
@@ -241,7 +241,7 @@ export function RechargeFormCard({
       disableHoverEffect
       className={
         embedded
-          ? 'rounded-none border-0 bg-transparent shadow-none'
+          ? 'rounded-none border-0 bg-transparent shadow-none ring-0'
           : undefined
       }
       headerClassName={embedded ? 'hidden' : undefined}

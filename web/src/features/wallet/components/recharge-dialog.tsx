@@ -266,7 +266,7 @@ export function RechargeDialog(props: RechargeDialogProps) {
         title={t('Account Recharge')}
         description={t('Choose an amount and payment method')}
         contentHeight='min(88dvh, 800px)'
-        contentClassName='max-w-[calc(100vw-1.5rem)] gap-0 overflow-hidden rounded-3xl p-0 sm:max-w-5xl sm:p-0 xl:max-w-7xl'
+        contentClassName='max-w-[calc(100vw-1.5rem)] gap-0 overflow-hidden rounded-3xl p-0 sm:max-w-5xl sm:p-0 xl:max-w-7xl [&>div]:mx-0'
         headerClassName='sr-only'
         bodyClassName='h-full px-0 py-0'
       >
