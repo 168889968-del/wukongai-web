@@ -74,7 +74,7 @@ function Set-ClaudeDesktopGateway($Configuration, [string]$BackupDirectory, [str
         try { if ($machine.GetValueNames().Count -gt 0) { throw 'Claude has machine-wide policy. Ask its administrator to configure the gateway; user policy would be ignored.' } }
         finally { $machine.Dispose() }
     }
-    $names = @('inferenceProvider', 'inferenceGatewayBaseUrl', 'inferenceGatewayApiKey', 'inferenceGatewayAuthScheme', 'inferenceModels', 'deploymentDisplayName')
+    $names = @('inferenceProvider', 'inferenceCredentialKind', 'inferenceGatewayBaseUrl', 'inferenceGatewayApiKey', 'inferenceGatewayAuthScheme', 'inferenceModels', 'deploymentDisplayName')
     $snapshot = Join-Path $BackupDirectory 'registry.json'
     if ($Configuration.mode -eq 'restore' -and -not (Test-Path -LiteralPath $snapshot)) {
         Write-Host '没有找到桌面端原配置备份，未修改任何配置。' -ForegroundColor Yellow
@@ -82,6 +82,9 @@ function Set-ClaudeDesktopGateway($Configuration, [string]$BackupDirectory, [str
     }
     $registry = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey($PolicyPath)
     try {
+        if ($Configuration.mode -ne 'restore' -and $registry.GetValue('bootstrapUrl')) {
+            throw 'Claude is managed by a bootstrap server. Its administrator must change the gateway; user settings would be ignored.'
+        }
         if ($Configuration.mode -eq 'restore') {
             $state = Get-Content -LiteralPath $snapshot -Raw | ConvertFrom-Json
             if (-not $state.active) { return }
@@ -105,6 +108,7 @@ function Set-ClaudeDesktopGateway($Configuration, [string]$BackupDirectory, [str
         }
         $values = @{
             inferenceProvider = 'gateway'
+            inferenceCredentialKind = 'static'
             inferenceGatewayBaseUrl = $Configuration.base
             inferenceGatewayApiKey = $Configuration.key
             inferenceGatewayAuthScheme = 'bearer'
