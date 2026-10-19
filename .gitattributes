@@ -2,3 +2,4 @@
 *.png binary
 *.jpg binary
 *.woff2 binary
+web/src/features/quick-setup/imagegen/image_gen.py -text
