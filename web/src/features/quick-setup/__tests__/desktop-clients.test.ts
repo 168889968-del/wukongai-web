@@ -88,7 +88,7 @@ function Start-Process {
 Install-WukongMsix $installer
 function Add-AppxPackage { param($Path, $ErrorAction) $script:installed = $Path }
 Invoke-Expression $script:helper
-if ($script:installed -ne $installer) { throw 'Incorrect Unicode or quoted installer path' }
+if ([IO.Path]::GetFullPath($script:installed) -ne [IO.Path]::GetFullPath($installer)) { throw "Incorrect Unicode or quoted installer path: $script:installed versus $installer" }
 if ($payload.key -ne 'sk-test-never-elevate') { throw 'Parent configuration changed' }
 `)
   })
