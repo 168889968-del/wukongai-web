@@ -7,7 +7,6 @@ import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import runner from '../windows-runner.ps1?raw'
-import { buildWindowsTool } from '../windows-tools'
 
 const roots: string[] = []
 function temporaryHome() {
@@ -171,63 +170,5 @@ describe.skipIf(process.platform !== 'win32')(
         )
       }
     })
-
-    it.skipIf(process.env.WUKONGAI_REAL_INSTALL_TESTS !== '1')(
-      'downloads and installs all four real clients on a clean Windows runner',
-      async () => {
-        const root = temporaryHome()
-        const profile = path.join(root, 'fresh profile')
-        fs.mkdirSync(profile, { recursive: true })
-        const system = process.env.SystemRoot ?? 'C:\\Windows'
-        const env: NodeJS.ProcessEnv = {
-          ...process.env,
-          USERPROFILE: profile,
-          LOCALAPPDATA: profile,
-          HOME: profile,
-          CODEX_HOME: path.join(profile, '.codex'),
-          CLAUDE_CONFIG_DIR: path.join(profile, '.claude'),
-          GROK_HOME: path.join(profile, '.grok'),
-          DSH_HOME: path.join(profile, '.dsh'),
-          Path: `${system}\\System32;${system}\\System32\\WindowsPowerShell\\v1.0;C:\\Program Files\\Git\\cmd`,
-        }
-        // Hide the runner's existing Node to exercise our actual portable bootstrap.
-        delete env.PATH
-        for (const client of ['codex', 'claude', 'grok', 'deepseek'] as const) {
-          const bat = path.join(root, `${client}-install.bat`)
-          fs.writeFileSync(bat, buildWindowsTool(client, 'install'))
-          const result = await execute(
-            'cmd.exe',
-            ['/d', '/s', '/c', `""${bat}""`],
-            env,
-            client === 'deepseek' ? 900000 : 420000
-          )
-          expect(result.code, `${client}: ${result.output}`).toBe(0)
-          expect(result.output).toContain('客户端安装完成')
-        }
-        expect(
-          fs.existsSync(
-            path.join(
-              profile,
-              'WukongAi/setup-runtime/node_modules/.bin/codex.cmd'
-            )
-          )
-        ).toBe(true)
-        expect(fs.existsSync(path.join(profile, '.local/bin/claude.exe'))).toBe(
-          true
-        )
-        expect(fs.existsSync(path.join(profile, '.grok/bin/grok.exe'))).toBe(
-          true
-        )
-        expect(
-          fs.existsSync(
-            path.join(
-              profile,
-              'WukongAi/setup-runtime/node_modules/.bin/dsh.cmd'
-            )
-          )
-        ).toBe(true)
-      },
-      1800000
-    )
   }
 )

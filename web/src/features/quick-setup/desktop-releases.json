@@ -1,0 +1,32 @@
+{
+  "checkedAt": "2026-10-19",
+  "claude": {
+    "version": "2.19675.1",
+    "source": "https://raw.githubusercontent.com/microsoft/winget-pkgs/master/manifests/a/Anthropic/Claude/2.19675.1/Anthropic.Claude.installer.yaml",
+    "x64": {
+      "url": "https://downloads.claude.ai/releases/win32/x64/2.19675.1/Claude-8613680e2e16d90700c039e084a7883f321ed4e3.msix",
+      "sha256": "07B4935F7A75C5D980B9D63C4D059FDF0AEFE68903FE96E65A5C45CD1A106A93"
+    },
+    "arm64": {
+      "url": "https://downloads.claude.ai/releases/win32/arm64/2.19675.1/Claude-8613680e2e16d90700c039e084a7883f321ed4e3.msix",
+      "sha256": "9556E8566307A1EB9434B8E23CD4BC34B339B61D3F79D303ABF843AF5D4748E0"
+    }
+  },
+  "deepseek": {
+    "version": "0.2.1-rc.2",
+    "source": "https://download.deepseek.com/dsh-desk/feeds/win-x64/nightly.yml",
+    "x64": {
+      "url": "https://download.deepseek.com/dsh-desk/bin/win-x64/deepseek-harness-0.2.1-rc.2-win-x64.exe",
+      "sha512": "39POl5osl9PKMqrPXQA52dh/bCV0Z02vOV9cTjOJDHE6gsJwp5bv7lfgB3mVWAKspX7a/w1iTi+8Listdhq45g=="
+    }
+  },
+  "grok": {
+    "version": "4.15.2",
+    "community": true,
+    "source": "https://github.com/phuryn/grok-build-vscode/releases/tag/v4.15.2",
+    "x64": {
+      "url": "https://github.com/phuryn/grok-build-vscode/releases/download/v4.15.2/Grok-Build-Desktop-4.15.2-win-x64.exe",
+      "sha256": "bacc704ff372b12e146ae3cb43e53fca80abc6e309c54c6aadd49eb99a5103b0"
+    }
+  }
+}

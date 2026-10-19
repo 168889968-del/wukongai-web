@@ -234,6 +234,11 @@ export function GetStarted() {
     PRIMARY_OPTIONS.find((option) => option.value === client) ??
     PRIMARY_OPTIONS[0]
   const guide = INSTALL_GUIDES[client]
+  const desktopDescription: Record<string, string> = {
+    grok: '安装 Grok Build Desktop 开源社区桌面版（phuryn/grok-build-vscode），并准备官方 Grok 引擎；支持 Windows x64。',
+    deepseek: '安装 DeepSeek 官方 Harness 桌面预览版；支持 Windows x64。',
+    claude: '安装 Claude 官方桌面版，自动识别 x64 / ARM64。',
+  }
   const terminalName = os === 'mac' ? '终端' : 'PowerShell'
   let installerUrl = guide?.docsUrl ?? ''
   if (client === 'codex') {
@@ -333,9 +338,7 @@ export function GetStarted() {
                   >
                     已经装好，下一步 <ArrowRight className='ml-1.5 size-4' />
                   </Button>
-                  {os === 'windows' &&
-                  client !== 'codex' &&
-                  isWindowsClient(client) ? (
+                  {os === 'windows' && isWindowsClient(client) ? (
                     <Button
                       variant='outline'
                       className='rounded-full px-6'
@@ -370,20 +373,22 @@ export function GetStarted() {
                     role='status'
                     className='mt-4 text-center text-sm text-sky-600'
                   >
-                    已下载 {installDownloaded}，双击运行后返回此页继续配置。
+                    已发起下载 {installDownloaded}。 打开浏览器下载列表，双击
+                    BAT：自动安装桌面端，选择默认服务“悟空Ai”，粘贴 API
+                    密钥即可接入。
                   </p>
                 )}
                 {client === 'codex' && os === 'windows' && (
                   <p className='mt-4 text-center text-sm text-slate-500'>
-                    下载官方 Windows x64 安装包，安装后继续下一步。
-                    <a
-                      className='ml-2 text-sky-600'
-                      href='https://persistent.oaistatic.com/codex-app-prod/ChatGPT-arm64.msix'
-                      target='_blank'
-                      rel='noopener noreferrer'
-                    >
-                      ARM64 电脑下载
-                    </a>
+                    下载一键部署 BAT，双击后自动安装官方桌面应用（自动识别 x64 /
+                    ARM64），创建桌面快捷方式。 默认服务为悟空Ai，输入 API
+                    密钥即可使用；已有配置会先备份。
+                  </p>
+                )}
+                {client !== 'codex' && os === 'windows' && (
+                  <p className='mt-4 text-center text-sm text-slate-500'>
+                    {desktopDescription[client]} 选择默认悟空Ai服务，输入 API
+                    密钥后自动配置并创建桌面快捷方式。
                   </p>
                 )}
                 <details className='mx-auto mt-8 max-w-2xl'>

@@ -49,7 +49,8 @@ describe('Windows setup and restore tools', () => {
       model: '示例模型',
     })
     const parts = [...bat.matchAll(/FromBase64String\('([^']+)'\)/g)]
-    const worker = Buffer.from(parts[1][1], 'base64').toString()
+    const workerEncoded = bat.match(/\$wukongWorkerEncoded = '([^']+)'/)?.[1]
+    const worker = Buffer.from(workerEncoded ?? '', 'base64').toString()
     const workerPath = path.join(root, 'worker.mjs')
     fs.writeFileSync(workerPath, worker)
     const result = spawnSync(

@@ -31,7 +31,7 @@ jobs:
       - name: Test BAT runners and fresh client installs
         env:
           WUKONGAI_REAL_INSTALL_TESTS: '1'
-        run: bun run test src/features/quick-setup/__tests__/windows-tools.test.ts src/features/quick-setup/__tests__/windows-installer.test.ts
+        run: bun run test src/features/quick-setup/__tests__/windows-tools.test.ts src/features/quick-setup/__tests__/windows-installer.test.ts src/features/quick-setup/__tests__/codex-desktop.test.ts src/features/quick-setup/__tests__/desktop-clients.test.ts
   build:
     needs: windows-tools
     runs-on: ubuntu-latest

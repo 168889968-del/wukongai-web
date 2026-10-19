@@ -13,14 +13,21 @@ export function configure(input, root, dependencies) {
   const fileSets = {
     codex: ['config.toml', 'auth.json'],
     claude: ['settings.json'],
-    grok: ['config.toml'],
-    deepseek: ['cordis.patch.yml', '.credentials.yaml'],
+    grok: input.desktop
+      ? ['config.toml', 'desktop-config.json']
+      : ['config.toml'],
+    deepseek: input.desktop
+      ? ['profiles/desktop/cordis.patch.yml', '.credentials.yaml']
+      : ['cordis.patch.yml', '.credentials.yaml'],
   }
   const files = fileSets[input.client]
   if (!files || !['setup', 'restore'].includes(input.mode)) {
     throw new Error('Invalid setup operation')
   }
-  const snapshot = path.join(root, '.wukongai-setup-backup')
+  const snapshot = path.join(
+    root,
+    input.desktop ? '.wukongai-desktop-backup' : '.wukongai-setup-backup'
+  )
   const manifestPath = path.join(snapshot, 'state.json')
   const read = (file) =>
     fs.existsSync(path.join(root, file))
@@ -119,8 +126,21 @@ export function configure(input, root, dependencies) {
       api_backend: 'chat_completions',
     }
     changes['config.toml'] = TOML.stringify(config)
+    if (input.desktop) {
+      changes['desktop-config.json'] = JSON.stringify(
+        {
+          'grok.defaultModel': 'wukongai',
+          'grok.cliPath': input.desktopCli,
+        },
+        null,
+        2
+      )
+    }
   } else {
-    const patch = YAML.parse(read('cordis.patch.yml')) || []
+    const patchFile = input.desktop
+      ? 'profiles/desktop/cordis.patch.yml'
+      : 'cordis.patch.yml'
+    const patch = YAML.parse(read(patchFile)) || []
     if (!Array.isArray(patch)) throw new Error('Unsupported DSH patch format')
     const provider = patch.find((entry) => entry.id === 'llm-pi-ai') || {
       id: 'llm-pi-ai',
@@ -150,11 +170,30 @@ export function configure(input, root, dependencies) {
       model: input.model,
     }
     if (!patch.includes(selection)) patch.push(selection)
-    changes['cordis.patch.yml'] = YAML.stringify(patch)
-    changes['.credentials.yaml'] = YAML.stringify({
-      ...YAML.parse(read('.credentials.yaml')),
-      WUKONGAI_API_KEY: input.key,
-    })
+    if (input.desktop) {
+      delete provider.name
+      delete selection.name
+    }
+    changes[patchFile] = YAML.stringify(patch)
+    const credentials = YAML.parse(read('.credentials.yaml')) || {}
+    if (
+      input.desktop &&
+      credentials.version !== undefined &&
+      credentials.version !== 1
+    ) {
+      throw new Error('Unsupported desktop credential store version')
+    }
+    const existingRefs =
+      credentials.version === 1 ? credentials.refs : credentials
+    changes['.credentials.yaml'] = YAML.stringify(
+      input.desktop
+        ? {
+            ...(credentials.version === 1 ? credentials : {}),
+            version: 1,
+            refs: { ...existingRefs, WUKONGAI_API_KEY: input.key },
+          }
+        : { ...credentials, WUKONGAI_API_KEY: input.key }
+    )
   }
   fs.mkdirSync(snapshot, { recursive: true, mode: 0o700 })
   if (!state?.active) {
@@ -162,6 +201,9 @@ export function configure(input, root, dependencies) {
     for (const file of files) {
       state.existed[file] = fs.existsSync(path.join(root, file))
       if (state.existed[file]) {
+        fs.mkdirSync(path.dirname(path.join(snapshot, file)), {
+          recursive: true,
+        })
         fs.copyFileSync(path.join(root, file), path.join(snapshot, file))
       }
     }
@@ -170,7 +212,11 @@ export function configure(input, root, dependencies) {
   try {
     for (const [file, content] of Object.entries(changes)) write(file, content)
   } catch (error) {
-    configure({ client: input.client, mode: 'restore' }, root, dependencies)
+    configure(
+      { client: input.client, mode: 'restore', desktop: input.desktop },
+      root,
+      dependencies
+    )
     throw error
   }
   return 'configured'

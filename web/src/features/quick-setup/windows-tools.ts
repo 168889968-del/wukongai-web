@@ -1,3 +1,6 @@
+import codexDesktopRunner from './codex-desktop.ps1?raw'
+import graphicalDesktopRunner from './desktop-clients.ps1?raw'
+import desktopReleases from './desktop-releases.json?raw'
 import configurationWorker from './windows-config.mjs?raw'
 import windowsRunner from './windows-runner.ps1?raw'
 
@@ -24,9 +27,16 @@ export function buildWindowsTool(
   }
   const payload =
     mode === 'setup' ? { client, mode, ...config } : { client, mode }
-  const script = windowsRunner
+  const sharedRunner = windowsRunner.replaceAll('\r\n', '\n')
+  const desktopRunner =
+    client === 'codex'
+      ? codexDesktopRunner
+      : `${codexDesktopRunner.split('# WUKONGAI_DESKTOP_MAIN')[0]}\n${graphicalDesktopRunner}`
+  const runner = `${sharedRunner.slice(0, sharedRunner.indexOf('\ntry {\n    $payload'))}\n${desktopRunner}`
+  const script = runner
     .replace('__PAYLOAD__', encode(JSON.stringify(payload)))
     .replace('__WORKER__', encode(configurationWorker))
+    .replace('__RELEASES__', encode(desktopReleases))
   return [
     '@echo off',
     'setlocal',
