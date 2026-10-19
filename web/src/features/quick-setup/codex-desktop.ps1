@@ -314,7 +314,7 @@ try {
     Set-CodexDesktopConfiguration $configuration $root
     if ($mode -ne 'restore' -and 'gpt-image-2' -in @($script:wukongCodexModels)) {
         $stage = '自动配置悟空Ai API 生图'
-        Install-WukongImageSupport $base $key $root
+        Install-WukongImageSupport $base $key $root -RefreshChatKey
     } elseif ($mode -ne 'restore') {
         Write-Host '当前密钥未开放 gpt-image-2，已配置聊天；生图尚未启用。可在权限开放后下载“API 生图配置”工具。' -ForegroundColor Yellow
     }

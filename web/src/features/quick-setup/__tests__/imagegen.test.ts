@@ -103,6 +103,29 @@ it('repairs the missing provider without replacing the active ChatGPT login or m
   expect(fs.existsSync(keyFile)).toBe(false)
 })
 
+it('keeps a working chat provider and credential unchanged when a separate image-only key is configured', () => {
+  const root = temporaryRoot()
+  const config =
+    'model_provider = "wukongai"\nmodel = "gpt-6.1-sol"\n[model_providers.wukongai]\nname = "Existing"\nbase_url = "https://wukongai.work/v1"\nrequires_openai_auth = true\n'
+  const auth = '{"OPENAI_API_KEY":"sk-original-chat-key"}\n'
+  fs.writeFileSync(path.join(root, 'config.toml'), config)
+  fs.writeFileSync(path.join(root, 'auth.json'), auth)
+  configure(
+    {
+      client: 'codex',
+      mode: 'setup',
+      base: 'https://wukongai.work',
+      key: 'sk-image-only-key',
+      model: 'gpt-image-2',
+      repairProviderOnly: true,
+    },
+    root,
+    process.cwd()
+  )
+  expect(fs.readFileSync(path.join(root, 'config.toml'), 'utf8')).toBe(config)
+  expect(fs.readFileSync(path.join(root, 'auth.json'), 'utf8')).toBe(auth)
+})
+
 it('does not delete image files absent from an older backup manifest', () => {
   const root = temporaryRoot()
   const backup = path.join(root, '.wukongai-setup-backup')
@@ -162,6 +185,9 @@ $key=[Security.Cryptography.ProtectedData]::Unprotect([IO.File]::ReadAllBytes((J
 if ([Text.Encoding]::UTF8.GetString($key) -ne 'sk-dpapi-image-fixture') { throw 'DPAPI credential incorrect' }
 if ([IO.File]::ReadAllText((Join-Path $folder 'config.json')).Contains('sk-dpapi-image-fixture')) { throw 'Plaintext credential in config' }
 if ($env:OPENAI_API_KEY -ne 'leave-existing-value') { throw 'Global credential was replaced' }
+Install-WukongImageSupport 'https://wukongai.work' 'sk-new-image-only-fixture' $root
+$chat=[Security.Cryptography.ProtectedData]::Unprotect([IO.File]::ReadAllBytes((Join-Path $folder 'chat-key.bin')),$null,[Security.Cryptography.DataProtectionScope]::CurrentUser)
+if ([Text.Encoding]::UTF8.GetString($chat) -ne 'sk-dpapi-image-fixture') { throw 'Changing the image key replaced the working chat key' }
 $tokens=$null; $errors=$null
 $bat=[IO.File]::ReadAllText('${path.join(root, 'public.bat').replaceAll("'", "''")}')
 $script=($bat -split '(?m)^# WUKONGAI_SCRIPT\\r?$',2)[1]

@@ -21,6 +21,7 @@ export function configure(input, root, dependencies) {
       'skills/wukongai-imagegen/scripts/image_gen.py',
       'skills/wukongai-imagegen/scripts/config.json',
       'skills/wukongai-imagegen/scripts/key.bin',
+      'skills/wukongai-imagegen/scripts/chat-key.bin',
     ],
     claude: ['settings.json'],
     grok: input.desktop
@@ -108,39 +109,44 @@ export function configure(input, root, dependencies) {
       config.model_provider = 'wukongai'
       config.model = input.model
     }
-    config.model_providers = config.model_providers || {}
-    config.model_providers.wukongai = {
-      name: 'WukongAi',
-      base_url: `${base}/v1`,
-      wire_api: 'responses',
-      ...(input.repairProviderOnly
-        ? {
-            auth: {
-              command: path.join(
-                process.env.WINDIR || 'C:\\Windows',
-                'System32',
-                'WindowsPowerShell',
-                'v1.0',
-                'powershell.exe'
-              ),
-              args: [
-                '-NoProfile',
-                '-ExecutionPolicy',
-                'Bypass',
-                '-File',
-                path.join(
-                  root,
-                  'skills/wukongai-imagegen/scripts/read-key.ps1'
+    if (!input.repairProviderOnly || !config.model_providers?.wukongai) {
+      config.model_providers = config.model_providers || {}
+      config.model_providers.wukongai = {
+        name: 'WukongAi',
+        base_url: `${base}/v1`,
+        wire_api: 'responses',
+        ...(input.repairProviderOnly
+          ? {
+              auth: {
+                command: path.join(
+                  process.env.WINDIR || 'C:\\Windows',
+                  'System32',
+                  'WindowsPowerShell',
+                  'v1.0',
+                  'powershell.exe'
                 ),
-                '-Store',
-                path.join(root, 'skills/wukongai-imagegen/scripts/key.bin'),
-              ],
-              timeout_ms: 30000,
-            },
-          }
-        : { requires_openai_auth: true }),
+                args: [
+                  '-NoProfile',
+                  '-ExecutionPolicy',
+                  'Bypass',
+                  '-File',
+                  path.join(
+                    root,
+                    'skills/wukongai-imagegen/scripts/read-key.ps1'
+                  ),
+                  '-Store',
+                  path.join(
+                    root,
+                    'skills/wukongai-imagegen/scripts/chat-key.bin'
+                  ),
+                ],
+                timeout_ms: 30000,
+              },
+            }
+          : { requires_openai_auth: true }),
+      }
+      changes['config.toml'] = TOML.stringify(config)
     }
-    changes['config.toml'] = TOML.stringify(config)
     if (!input.repairProviderOnly) {
       changes['auth.json'] =
         `${JSON.stringify({ OPENAI_API_KEY: input.key }, null, 2)}\n`

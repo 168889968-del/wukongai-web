@@ -42,7 +42,7 @@ function Get-WukongImagePython($Assets) {
     return $python
 }
 
-function Install-WukongImageSupport([string]$Base, [string]$Key, [string]$CodexRoot) {
+function Install-WukongImageSupport([string]$Base, [string]$Key, [string]$CodexRoot, [switch]$RefreshChatKey) {
     $assets = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($wukongImageFilesEncoded)) | ConvertFrom-Json
     Write-Host '正在准备悟空Ai生图工具和独立 Python 环境，首次运行需要下载依赖。' -ForegroundColor Cyan
     $python = Get-WukongImagePython $assets
@@ -63,5 +63,7 @@ function Install-WukongImageSupport([string]$Base, [string]$Key, [string]$CodexR
     Add-Type -AssemblyName System.Security
     $encrypted = [Security.Cryptography.ProtectedData]::Protect([Text.Encoding]::UTF8.GetBytes($Key), $null, [Security.Cryptography.DataProtectionScope]::CurrentUser)
     [IO.File]::WriteAllBytes((Join-Path $scripts 'key.bin'), $encrypted)
+    $chatKey = Join-Path $scripts 'chat-key.bin'
+    if ($RefreshChatKey -or -not (Test-Path -LiteralPath $chatKey)) { [IO.File]::WriteAllBytes($chatKey, $encrypted) }
     Write-Host '悟空Ai API 生图已配置。重新打开 Codex 聊天后，可要求“用悟空Ai生成图片”，无需再填写密钥或代码。' -ForegroundColor Green
 }
