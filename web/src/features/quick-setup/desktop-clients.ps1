@@ -68,7 +68,7 @@ function Protect-DesktopConfigFile([string]$Path) {
     [IO.File]::SetAccessControl($Path, $acl)
 }
 
-function Set-ClaudeDesktopGateway($Configuration, [string]$BackupDirectory, [string]$PolicyPath = 'SOFTWARE\Policies\Claude') {
+function Set-ClaudeDesktopGatewayCore($Configuration, [string]$BackupDirectory, [string]$PolicyPath = 'SOFTWARE\Policies\Claude') {
     $machine = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey($PolicyPath)
     if ($machine) {
         try { if ($machine.GetValueNames().Count -gt 0) { throw 'Claude has machine-wide policy. Ask its administrator to configure the gateway; user policy would be ignored.' } }
@@ -81,6 +81,7 @@ function Set-ClaudeDesktopGateway($Configuration, [string]$BackupDirectory, [str
         return
     }
     $registry = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey($PolicyPath)
+    $writesStarted = $false
     try {
         if ($Configuration.mode -ne 'restore' -and $registry.GetValue('bootstrapUrl')) {
             throw 'Claude is managed by a bootstrap server. Its administrator must change the gateway; user settings would be ignored.'
@@ -88,6 +89,7 @@ function Set-ClaudeDesktopGateway($Configuration, [string]$BackupDirectory, [str
         if ($Configuration.mode -eq 'restore') {
             $state = Get-Content -LiteralPath $snapshot -Raw | ConvertFrom-Json
             if (-not $state.active) { return }
+            $writesStarted = $true
             foreach ($entry in $state.values) {
                 if ($entry.exists) { $registry.SetValue($entry.name, $entry.value, [Microsoft.Win32.RegistryValueKind]$entry.kind) }
                 else { $registry.DeleteValue($entry.name, $false) }
@@ -115,10 +117,11 @@ function Set-ClaudeDesktopGateway($Configuration, [string]$BackupDirectory, [str
             inferenceModels = (ConvertTo-Json -InputObject @(@{name=$Configuration.model}) -Compress)
             deploymentDisplayName = '悟空Ai'
         }
+        $writesStarted = $true
         foreach ($name in $names) { $registry.SetValue($name, [string]$values[$name], [Microsoft.Win32.RegistryValueKind]::String) }
     } catch {
         # Restore just the fields managed by this tool; preserve unrelated user policy.
-        if (Test-Path -LiteralPath $snapshot) {
+        if ($writesStarted -and (Test-Path -LiteralPath $snapshot)) {
             $state = Get-Content -LiteralPath $snapshot -Raw | ConvertFrom-Json
             foreach ($entry in $state.values) {
                 if ($entry.exists) { $registry.SetValue($entry.name, $entry.value, [Microsoft.Win32.RegistryValueKind]$entry.kind) }
@@ -127,6 +130,73 @@ function Set-ClaudeDesktopGateway($Configuration, [string]$BackupDirectory, [str
         }
         throw
     } finally { $registry.Dispose() }
+}
+
+function Invoke-ClaudePolicyElevation($Configuration, [string]$BackupDirectory, [string]$PolicyPath) {
+    Write-Host 'Windows 保护 Claude 策略配置，需要再次管理员授权。请允许写入当前账户的悟空Ai配置。' -ForegroundColor Yellow
+    Add-Type -AssemblyName System.Security
+    $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User
+    $directory = Join-Path ([IO.Path]::GetTempPath()) ('wukongai-policy-' + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $directory -ErrorAction Stop | Out-Null
+    $requestPath = Join-Path $directory 'request.bin'
+    try {
+        $acl = [IO.Directory]::GetAccessControl($directory, [Security.AccessControl.AccessControlSections]::Access)
+        $acl.SetAccessRuleProtection($true, $false)
+        $acl.SetAccessRule([Security.AccessControl.FileSystemAccessRule]::new($sid, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow'))
+        [IO.Directory]::SetAccessControl($directory, $acl)
+        $json = @{configuration=$Configuration} | ConvertTo-Json -Depth 8 -Compress
+        $encrypted = [Security.Cryptography.ProtectedData]::Protect([Text.Encoding]::UTF8.GetBytes($json), $null, [Security.Cryptography.DataProtectionScope]::CurrentUser)
+        [IO.File]::WriteAllBytes($requestPath, $encrypted)
+        $json = $null
+        $literalPath = $requestPath.Replace("'", "''")
+        $literalBackup = [IO.Path]::GetFullPath($BackupDirectory).Replace("'", "''")
+        $literalPolicy = $PolicyPath.Replace("'", "''")
+        # Fixed function bodies are embedded, rather than executing a writable script.
+        # The command line contains only a DPAPI-encrypted request's path and the SID.
+        $definitions = "function Protect-DesktopConfigFile {`n$(${function:Protect-DesktopConfigFile}.ToString())`n}`nfunction Set-ClaudeDesktopGatewayCore {`n$(${function:Set-ClaudeDesktopGatewayCore}.ToString())`n}"
+        $helper = @"
+`$ErrorActionPreference = 'Stop'
+`$ProgressPreference = 'SilentlyContinue'
+Add-Type -AssemblyName System.Security
+$definitions
+try {
+    if ([Security.Principal.WindowsIdentity]::GetCurrent().User.Value -ne '$($sid.Value)') { exit 83 }
+    `$bytes = [Security.Cryptography.ProtectedData]::Unprotect([IO.File]::ReadAllBytes('$literalPath'), `$null, [Security.Cryptography.DataProtectionScope]::CurrentUser)
+    `$request = [Text.Encoding]::UTF8.GetString(`$bytes) | ConvertFrom-Json
+    Set-ClaudeDesktopGatewayCore `$request.configuration '$literalBackup' '$literalPolicy'
+    exit 0
+} catch {
+    `$message = `$_.Exception.Message
+    if (`$request.configuration.key) { `$message = `$message.Replace(`$request.configuration.key, '[API key]') }
+    Write-Host `$message -ForegroundColor Red
+    Read-Host 'Press Enter to return'
+    exit 85
+}
+"@
+        $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($helper))
+        try {
+            $process = Start-Process -FilePath "$env:WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -Verb RunAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -EncodedCommand $encoded" -PassThru -Wait
+        } catch { throw 'Claude 配置授权未完成。请重新运行 BAT 并允许 Windows 配置授权；桌面客户端无需重新下载安装。' }
+        if ($process.ExitCode -eq 83) { throw '配置授权使用了另一个管理员账户，已停止。请由管理员协助为当前账户配置 Claude；未将密钥写入其他账户。' }
+        if ($process.ExitCode -ne 0) { throw "Claude 管理员配置失败（退出码 $($process.ExitCode)）。请保留授权窗口中的错误信息；原配置备份未删除。" }
+    } finally {
+        if (Test-Path -LiteralPath $requestPath) { Remove-Item -LiteralPath $requestPath -Force -ErrorAction SilentlyContinue }
+        Remove-Item -LiteralPath $directory -ErrorAction SilentlyContinue
+    }
+}
+
+function Set-ClaudeDesktopGateway($Configuration, [string]$BackupDirectory, [string]$PolicyPath = 'SOFTWARE\Policies\Claude') {
+    try { Set-ClaudeDesktopGatewayCore $Configuration $BackupDirectory $PolicyPath }
+    catch {
+        $exception = $_.Exception
+        $denied = $false
+        while ($exception) {
+            if ($exception -is [UnauthorizedAccessException] -or $exception -is [Security.SecurityException]) { $denied = $true; break }
+            $exception = $exception.InnerException
+        }
+        if (-not $denied) { throw }
+        Invoke-ClaudePolicyElevation $Configuration $BackupDirectory $PolicyPath
+    }
 }
 
 function Get-WukongDesktopModel([string]$Client, [string]$Base, [string]$Key, [string]$SelectedModel) {

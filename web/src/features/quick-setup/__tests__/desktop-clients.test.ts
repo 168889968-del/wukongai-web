@@ -118,6 +118,133 @@ catch { if ($_ -notmatch '0x80073CF3') { throw } }
   })
 })
 
+describe('Claude protected policy configuration', () => {
+  it('detects real registry ACL denial and requests consent without changing the original values', () => {
+    execute(`
+$policy = 'SOFTWARE\\WukongAiDesktopTest\\' + [guid]::NewGuid().ToString('N')
+$registry = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey($policy)
+$originalAcl = $registry.GetAccessControl([Security.AccessControl.AccessControlSections]::Access)
+try {
+    $registry.SetValue('inferenceProvider', 'original')
+    $lockedAcl = [Security.AccessControl.RegistrySecurity]::new()
+    $lockedAcl.SetAccessRuleProtection($true, $false)
+    $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User
+    $lockedAcl.AddAccessRule([Security.AccessControl.RegistryAccessRule]::new($sid, 'ReadKey', 'Allow'))
+    $registry.SetAccessControl($lockedAcl)
+    function Invoke-ClaudePolicyElevation { $script:requested = $true }
+    Set-ClaudeDesktopGateway @{mode='setup';base='https://wukongai.work';key='sk-acl-test';model='claude-test'} (Join-Path $env:WUKONGAI_TEST_ROOT 'backup') $policy
+    if (-not $script:requested) { throw 'Actual registry access denial did not request consent' }
+    if ($registry.GetValue('inferenceProvider') -ne 'original') { throw 'Policy changed before consent' }
+} finally {
+    $registry.SetAccessControl($originalAcl)
+    $registry.Dispose()
+    [Microsoft.Win32.Registry]::CurrentUser.DeleteSubKeyTree($policy, $false)
+}
+`)
+  })
+
+  it('requests configuration consent only for registry permission failures', () => {
+    execute(`
+function Set-ClaudeDesktopGatewayCore { throw [UnauthorizedAccessException]::new('Protected policy') }
+function Invoke-ClaudePolicyElevation {
+    param($Configuration, $BackupDirectory, $PolicyPath)
+    if ($Configuration.key -ne 'sk-consent-test' -or $PolicyPath -ne 'SOFTWARE\\WukongAiDesktopTest' -or $BackupDirectory -ne 'backup') { throw 'Wrong user configuration' }
+    $script:consent = $true
+}
+Set-ClaudeDesktopGateway @{mode='setup';key='sk-consent-test'} 'backup' 'SOFTWARE\\WukongAiDesktopTest'
+if (-not $script:consent) { throw 'Missing configuration consent' }
+$script:consent = $false
+function Set-ClaudeDesktopGatewayCore { throw 'Machine policy blocks configuration' }
+try { Set-ClaudeDesktopGateway @{} 'backup'; throw 'False success' }
+catch { if ($_ -notmatch 'Machine policy') { throw } }
+if ($script:consent) { throw 'Unexpected elevation for management policy' }
+`)
+  })
+
+  it('passes secrets with DPAPI and configures and restores the original user through a real child process', () => {
+    execute(
+      `
+$env:TEMP = $env:WUKONGAI_TEST_ROOT
+$env:TMP = $env:WUKONGAI_TEST_ROOT
+$policy = 'SOFTWARE\\WukongAiDesktopTest\\' + [guid]::NewGuid().ToString('N')
+$backup = Join-Path $env:WUKONGAI_TEST_ROOT 'backup'
+function Start-Process {
+    param($FilePath, $Verb, $ArgumentList, [switch]$PassThru, [switch]$Wait)
+    if ($Verb -ne 'RunAs' -or -not $Wait) { throw 'Missing administrator consent' }
+    $encoded = ($ArgumentList -split ' ')[-1]
+    $code = [Text.Encoding]::Unicode.GetString([Convert]::FromBase64String($encoded))
+    if ($code -match 'sk-dpapi-test|claude-private-test') { throw 'Secret or configuration leaked to command line' }
+    if ($code.Length * 8 / 3 -gt 30000) { throw 'Elevated command exceeds Windows limit' }
+    if ($code.IndexOf('exit 83') -gt $code.IndexOf('::Unprotect')) { throw 'Wrong account can access request' }
+    $requestFile = @(Get-ChildItem -LiteralPath $env:WUKONGAI_TEST_ROOT -Filter request.bin -Recurse)
+    if ($requestFile.Count -ne 1) { throw 'Missing encrypted request' }
+    $bytes = [IO.File]::ReadAllBytes($requestFile[0].FullName)
+    if ([Text.Encoding]::UTF8.GetString($bytes) -match 'sk-dpapi-test') { throw 'Plaintext secret on disk' }
+    $plain = [Text.Encoding]::UTF8.GetString([Security.Cryptography.ProtectedData]::Unprotect($bytes, $null, [Security.Cryptography.DataProtectionScope]::CurrentUser))
+    $request = $plain | ConvertFrom-Json
+    if ($request.configuration.mode -eq 'setup' -and $request.configuration.key -ne 'sk-dpapi-test') { throw 'Invalid encrypted request' }
+    $acl = [IO.Directory]::GetAccessControl($requestFile[0].DirectoryName, [Security.AccessControl.AccessControlSections]::Access)
+    if (-not $acl.AreAccessRulesProtected) { throw 'Request directory is not private' }
+    & $FilePath -NoProfile -ExecutionPolicy Bypass -EncodedCommand $encoded
+    return @{ExitCode=$LASTEXITCODE}
+}
+try {
+    $registry = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey($policy)
+    $registry.SetValue('inferenceProvider', 'original')
+    $registry.SetValue('unrelated', 'preserve')
+    $registry.Dispose()
+    Invoke-ClaudePolicyElevation @{mode='setup';base='https://wukongai.work';key='sk-dpapi-test';model='claude-private-test'} $backup $policy
+    $registry = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($policy)
+    if ($registry.GetValue('inferenceGatewayApiKey') -ne 'sk-dpapi-test') { throw 'Child did not configure original user' }
+    $registry.Dispose()
+    Invoke-ClaudePolicyElevation @{mode='restore'} $backup $policy
+    $registry = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($policy)
+    if ($registry.GetValue('inferenceProvider') -ne 'original' -or $registry.GetValue('inferenceGatewayApiKey') -ne $null -or $registry.GetValue('unrelated') -ne 'preserve') { throw 'Child restore lost original policy' }
+    $registry.Dispose()
+    if (@(Get-ChildItem -LiteralPath $env:WUKONGAI_TEST_ROOT -Filter request.bin -Recurse).Count) { throw 'Encrypted request was not removed' }
+} finally { [Microsoft.Win32.Registry]::CurrentUser.DeleteSubKeyTree($policy, $false) }
+`,
+      40000
+    )
+  })
+
+  it('cleans encrypted requests when consent is cancelled or another account or write fails', () => {
+    execute(`
+$env:TEMP = $env:WUKONGAI_TEST_ROOT
+$env:TMP = $env:WUKONGAI_TEST_ROOT
+foreach ($status in @(83, 85, 1223)) {
+    $script:status = $status
+    function Start-Process { if ($script:status -eq 1223) { throw 'Cancelled' }; return @{ExitCode=$script:status} }
+    $failed = $false
+    try { Invoke-ClaudePolicyElevation @{mode='setup';key='sk-cancel-test'} $env:WUKONGAI_TEST_ROOT 'SOFTWARE\\WukongAiDesktopTest' }
+    catch { $failed = $true }
+    if (-not $failed) { throw 'False success' }
+    if (@(Get-ChildItem -LiteralPath $env:WUKONGAI_TEST_ROOT -Filter request.bin -Recurse).Count) { throw 'Encrypted request remains after failure' }
+}
+`)
+  })
+
+  it('keeps managed bootstrap settings unchanged even when a previous backup exists', () => {
+    execute(`
+$policy = 'SOFTWARE\\WukongAiDesktopTest\\' + [guid]::NewGuid().ToString('N')
+$backup = Join-Path $env:WUKONGAI_TEST_ROOT 'backup'
+try {
+    Set-ClaudeDesktopGateway @{mode='setup';base='https://wukongai.work';key='sk-first-test';model='claude-test'} $backup $policy
+    $registry = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey($policy)
+    $registry.SetValue('bootstrapUrl', 'https://managed.example/config')
+    $registry.SetValue('inferenceProvider', 'managed')
+    $registry.Dispose()
+    function Invoke-ClaudePolicyElevation { throw 'Unexpected elevation for managed policy' }
+    try { Set-ClaudeDesktopGateway @{mode='setup';base='https://wukongai.work';key='sk-second-test';model='claude-test'} $backup $policy; throw 'False success' }
+    catch { if ($_ -notmatch 'managed by a bootstrap server') { throw } }
+    $registry = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($policy)
+    if ($registry.GetValue('inferenceProvider') -ne 'managed') { throw 'Managed policy overwritten by stale backup' }
+    $registry.Dispose()
+} finally { [Microsoft.Win32.Registry]::CurrentUser.DeleteSubKeyTree($policy, $false) }
+`)
+  })
+})
+
 describe('Desktop-specific configuration formats', () => {
   it('writes DeepSeek desktop profile overlays and versioned credentials, preserving other keys', () => {
     const root = temporaryRoot()
