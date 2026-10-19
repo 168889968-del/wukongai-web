@@ -19,7 +19,7 @@ afterEach(() => {
     }
     fs.rmSync(root, { recursive: true, force: true })
   }
-})
+}, 180000)
 
 function execute(script: string, timeout = 20000) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'wukongai-desktop-'))

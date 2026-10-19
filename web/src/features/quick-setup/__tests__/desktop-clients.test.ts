@@ -29,7 +29,7 @@ afterEach(() => {
     }
     fs.rmSync(root, { recursive: true, force: true })
   }
-})
+}, 180000)
 function execute(script: string, timeout = 20000) {
   const root = temporaryRoot()
   const file = path.join(root, 'check.ps1')
