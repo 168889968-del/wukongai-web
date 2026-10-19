@@ -54,6 +54,70 @@ function execute(script: string, timeout = 20000) {
   return root
 }
 
+describe('MSIX administrator consent', () => {
+  it('installs without elevation when Windows accepts the current token', () => {
+    execute(`
+function Add-AppxPackage { param($Path, $ErrorAction) $script:installed = $Path }
+function Start-Process { throw 'Unexpected administrator prompt' }
+Install-WukongMsix 'existing.msix'
+if ($script:installed -ne 'existing.msix') { throw 'Installer was not called' }
+`)
+  })
+
+  it('retries packaged-service failures with installation-only administrator consent', () => {
+    execute(`
+$installer = Join-Path $env:WUKONGAI_TEST_ROOT "安装包's.msix"
+[IO.File]::WriteAllText($installer, 'test installer')
+$payload = @{ key = 'sk-test-never-elevate'; base = 'https://wukongai.work' }
+function Add-AppxPackage { throw 'Deployment failed with HRESULT: 0x80073D28' }
+function Start-Process {
+    param($FilePath, $Verb, $ArgumentList, [switch]$PassThru, [switch]$Wait)
+    if ($Verb -ne 'RunAs' -or -not $Wait -or -not $PassThru) { throw 'Missing administrator consent or wait' }
+    $encoded = ($ArgumentList -split ' ')[-1]
+    $code = [Text.Encoding]::Unicode.GetString([Convert]::FromBase64String($encoded))
+    if ($code -match 'sk-test|payload|Set-ClaudeDesktopGateway|config.toml') { throw 'Configuration leaked into elevated helper' }
+    if ($code -notmatch 'exit 83' -or $code -notmatch 'exit 84' -or $code -notmatch 'Add-AppxPackage') { throw 'Missing account or checksum validation' }
+    $errors = $null
+    $tokens = $null
+    [Management.Automation.Language.Parser]::ParseInput($code, [ref]$tokens, [ref]$errors) | Out-Null
+    if ($errors.Count) { throw 'Invalid elevated helper syntax' }
+    # Execute fixed helper in this disposable process with its installer mocked.
+    $script:helper = $code.Replace('exit 0', 'return').Replace('exit 83', "throw 'wrong user'").Replace('exit 84', "throw 'wrong hash'")
+    return @{ ExitCode = 0 }
+}
+Install-WukongMsix $installer
+function Add-AppxPackage { param($Path, $ErrorAction) $script:installed = $Path }
+Invoke-Expression $script:helper
+if ($script:installed -ne $installer) { throw 'Incorrect Unicode or quoted installer path' }
+if ($payload.key -ne 'sk-test-never-elevate') { throw 'Parent configuration changed' }
+`)
+  })
+
+  it('stops on rejected consent, another administrator account, or installer failure', () => {
+    execute(`
+$installer = Join-Path $env:WUKONGAI_TEST_ROOT 'test.msix'
+[IO.File]::WriteAllText($installer, 'test')
+function Add-AppxPackage { throw '0x80073D28' }
+foreach ($status in @(83, 84, 85, 1223)) {
+    $script:status = $status
+    function Start-Process { if ($script:status -eq 1223) { throw 'Operation cancelled' }; return @{ ExitCode = $script:status } }
+    $failed = $false
+    try { Install-WukongMsix $installer } catch { $failed = $true }
+    if (-not $failed) { throw "False success for exit code $status" }
+}
+`)
+  })
+
+  it('preserves unrelated installation errors without asking for elevation', () => {
+    execute(`
+function Add-AppxPackage { throw '0x80073CF3 missing dependency' }
+function Start-Process { throw 'Unexpected administrator prompt' }
+try { Install-WukongMsix 'test.msix'; throw 'False success' }
+catch { if ($_ -notmatch '0x80073CF3') { throw } }
+`)
+  })
+})
+
 describe('Desktop-specific configuration formats', () => {
   it('writes DeepSeek desktop profile overlays and versioned credentials, preserving other keys', () => {
     const root = temporaryRoot()

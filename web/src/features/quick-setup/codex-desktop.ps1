@@ -60,6 +60,41 @@ function Save-CodexInstaller([string]$Url, [string]$Path) {
     }
 }
 
+function Install-WukongMsix([string]$Path) {
+    try {
+        Add-AppxPackage -Path $Path -ErrorAction Stop
+        return
+    } catch {
+        # Packaged services require an elevated token, even for a per-user MSIX.
+        $details = $_.ToString() + ' ' + $_.Exception.ToString()
+        if ($details -notmatch '(?i)80073D28|80070005|-2147009240|-2147024891') { throw }
+    }
+    Write-Host '桌面安装需要管理员权限，请在 Windows 授权框中允许安装。安装后将返回当前账户继续配置。' -ForegroundColor Yellow
+    $installerPath = [IO.Path]::GetFullPath($Path).Replace("'", "''")
+    $expectedHash = (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash
+    $originalSid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    # Elevate only fixed installation code, never the BAT or a writable helper file.
+    # No payload, API key or configuration code is passed to the elevated process.
+    $installScript = @"
+`$ErrorActionPreference = 'Stop'
+try {
+    if ([Security.Principal.WindowsIdentity]::GetCurrent().User.Value -ne '$originalSid') { exit 83 }
+    if ((Get-FileHash -LiteralPath '$installerPath' -Algorithm SHA256).Hash -ne '$expectedHash') { exit 84 }
+    Add-AppxPackage -Path '$installerPath' -ErrorAction Stop
+    exit 0
+} catch { Write-Host `$_ -ForegroundColor Red; Read-Host 'Press Enter to return'; exit 85 }
+"@
+    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($installScript))
+    try {
+        $process = Start-Process -FilePath "$env:WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -Verb RunAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -EncodedCommand $encoded" -PassThru -Wait
+    } catch {
+        throw '管理员授权未完成，桌面客户端尚未安装。请重新运行 BAT，并允许 Windows 安装授权。'
+    }
+    if ($process.ExitCode -eq 83) { throw '不能使用另一个管理员账户安装到当前账户。请让管理员为当前用户安装此桌面客户端后，再运行 BAT 配置悟空Ai。未修改服务或密钥配置。' }
+    if ($process.ExitCode -eq 84) { throw '安装包在授权期间发生变化，已停止安装。请重新下载安装包。' }
+    if ($process.ExitCode -ne 0) { throw "管理员安装失败（退出码 $($process.ExitCode)），未继续配置。请保留安装窗口中的错误信息。" }
+}
+
 function Install-CodexDesktop([string]$InstallerDirectory) {
     $installed = Get-CodexDesktop
     if ($installed) {
@@ -89,7 +124,7 @@ function Install-CodexDesktop([string]$InstallerDirectory) {
     if ($identity.ProcessorArchitecture -ne $architecture) { throw 'The installer does not match this computer architecture.' }
     Write-Host "正在安装 Codex 桌面端 $($identity.Version)..." -ForegroundColor Cyan
     # Windows validates the package signature and dependencies. Never allow unsigned packages.
-    Add-AppxPackage -Path $installer -ErrorAction Stop
+    Install-WukongMsix $installer
     $installed = Get-CodexDesktop
     if (-not $installed) { throw 'Windows did not register the Codex desktop application.' }
     return $installed

@@ -375,7 +375,8 @@ export function GetStarted() {
                   >
                     已发起下载 {installDownloaded}。 打开浏览器下载列表，双击
                     BAT：自动安装桌面端，选择默认服务“悟空Ai”，粘贴 API
-                    密钥即可接入。
+                    密钥即可接入。安装时如弹出 Windows
+                    管理员授权框，请允许安装。
                   </p>
                 )}
                 {client === 'codex' && os === 'windows' && (

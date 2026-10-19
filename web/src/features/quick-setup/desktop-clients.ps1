@@ -38,7 +38,7 @@ function Install-GraphicalDesktop([string]$Client) {
         $package = Get-AppxPackage -Name 'Claude' -ErrorAction Stop | Where-Object { $_.PackageFamilyName -eq 'Claude_pzs8sxrjxfjjc' } | Select-Object -First 1
         if (-not $package) {
             $installer = Get-VerifiedDesktopInstaller $Client
-            Add-AppxPackage -Path $installer -ErrorAction Stop
+            Install-WukongMsix $installer
             $package = Get-AppxPackage -Name 'Claude' -ErrorAction Stop | Where-Object { $_.PackageFamilyName -eq 'Claude_pzs8sxrjxfjjc' } | Select-Object -First 1
         }
         if (-not $package) { throw 'Windows did not register the official Claude desktop app.' }
