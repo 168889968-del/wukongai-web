@@ -140,6 +140,17 @@ Open-CodexDesktop $package $env:WUKONGAI_DESKTOP_TEST_ROOT
       expect(fs.existsSync(path.join(root, 'Codex - 悟空Ai.lnk'))).toBe(true)
     })
 
+    it('supports Unicode shortcut names and parent directories independently of the system locale', () => {
+      const { root } = execute(`
+$directory=Join-Path $env:WUKONGAI_DESKTOP_TEST_ROOT '中文桌面目录'
+$target=Join-Path $env:WINDIR 'explorer.exe'
+New-WukongDesktopShortcut (Join-Path $directory 'Claude - 悟空Ai.lnk') $target 'shell:AppsFolder\\Claude_test!App' '打开桌面客户端'
+`)
+      expect(
+        fs.existsSync(path.join(root, '中文桌面目录', 'Claude - 悟空Ai.lnk'))
+      ).toBe(true)
+    })
+
     it('the downloaded BAT parses as PowerShell without executing an installation', () => {
       const bat = buildWindowsTool('codex', 'install')
       const script = bat.split('# WUKONGAI_SCRIPT\r\n')[1]

@@ -400,8 +400,9 @@ export function GetStarted() {
                       <li className='rounded-2xl border border-slate-200 p-4 dark:border-slate-700'>
                         <p className='font-semibold'>① 下载并安装 Node.js</p>
                         <p className='mt-1 text-sm text-slate-600 dark:text-slate-400'>
-                          {current.hint} 通过 Node.js
-                          安装。已经装过的可以跳过这一步，选「LTS」版本，一路下一步即可。
+                          下面的命令行备用工具通过 Node.js 安装。
+                          桌面应用请使用上方的一键部署 BAT；已经装过 Node.js
+                          的可以跳过这一步。
                         </p>
                         <Button
                           className='mt-3 rounded-full bg-sky-500 text-white hover:bg-sky-600'

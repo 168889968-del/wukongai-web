@@ -147,11 +147,8 @@ function Open-GraphicalDesktop([string]$Client, $Launch, [string]$ConfigRoot) {
         $Launch.arguments = "-- --config-json=`"$config`""
     }
     $name = @{claude='Claude - 悟空Ai';deepseek='DeepSeek Harness - 悟空Ai';grok='Grok Build Desktop - 悟空Ai（社区版）'}[$Client]
-    $shell = New-Object -ComObject WScript.Shell
-    $shortcut = $shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath('Desktop')) "$name.lnk"))
-    $shortcut.TargetPath = $Launch.target
-    $shortcut.Arguments = $Launch.arguments
-    $shortcut.Save()
+    $path = Join-Path ([Environment]::GetFolderPath('Desktop')) "$name.lnk"
+    New-WukongDesktopShortcut $path $Launch.target $Launch.arguments $name
     if ($Launch.arguments) { Start-Process -FilePath $Launch.target -ArgumentList $Launch.arguments }
     else { Start-Process -FilePath $Launch.target }
 }

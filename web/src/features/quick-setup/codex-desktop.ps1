@@ -95,18 +95,66 @@ function Install-CodexDesktop([string]$InstallerDirectory) {
     return $installed
 }
 
+function New-WukongDesktopShortcut([string]$Path, [string]$Target, [string]$Arguments, [string]$Description) {
+    # IShellLinkW and IPersistFile keep Unicode paths intact on every Windows system locale.
+    # WScript.Shell's shortcut writer loses Chinese filenames on English Windows.
+    if (-not ('WukongDesktopShortcut' -as [type])) {
+        Add-Type -TypeDefinition @'
+using System;
+using System.Text;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
+[ComImport, Guid("00021401-0000-0000-C000-000000000046")]
+internal class WukongShellLink { }
+[ComImport, Guid("000214F9-0000-0000-C000-000000000046"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+internal interface IWukongShellLinkW {
+    void GetPath([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder path, int max, IntPtr data, uint flags);
+    void GetIDList(out IntPtr list);
+    void SetIDList(IntPtr list);
+    void GetDescription([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder text, int max);
+    void SetDescription([MarshalAs(UnmanagedType.LPWStr)] string text);
+    void GetWorkingDirectory([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder path, int max);
+    void SetWorkingDirectory([MarshalAs(UnmanagedType.LPWStr)] string path);
+    void GetArguments([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder text, int max);
+    void SetArguments([MarshalAs(UnmanagedType.LPWStr)] string text);
+    void GetHotkey(out short hotkey);
+    void SetHotkey(short hotkey);
+    void GetShowCmd(out int command);
+    void SetShowCmd(int command);
+    void GetIconLocation([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder path, int max, out int index);
+    void SetIconLocation([MarshalAs(UnmanagedType.LPWStr)] string path, int index);
+    void SetRelativePath([MarshalAs(UnmanagedType.LPWStr)] string path, uint reserved);
+    void Resolve(IntPtr window, uint flags);
+    void SetPath([MarshalAs(UnmanagedType.LPWStr)] string path);
+}
+public static class WukongDesktopShortcut {
+    public static void Save(string path, string target, string arguments, string description) {
+        IWukongShellLinkW link = (IWukongShellLinkW)new WukongShellLink();
+        try {
+            link.SetPath(target);
+            link.SetArguments(arguments ?? "");
+            link.SetDescription(description ?? "");
+            ((IPersistFile)link).Save(path, true);
+        } finally { Marshal.FinalReleaseComObject(link); }
+    }
+}
+'@
+    }
+    $directory = Split-Path $Path
+    if (-not $directory) { throw 'Windows did not provide a desktop shortcut directory.' }
+    New-Item -ItemType Directory -Path $directory -Force | Out-Null
+    [WukongDesktopShortcut]::Save($Path, $Target, $Arguments, $Description)
+}
+
 function Open-CodexDesktop($Package, [string]$DesktopDirectory = [Environment]::GetFolderPath('Desktop')) {
     [xml]$manifest = Get-Content -LiteralPath (Join-Path $Package.InstallLocation 'AppxManifest.xml') -Raw
     $application = @($manifest.Package.Applications.Application)[0].Id
     if (-not $application) { throw 'The installed desktop application has no launch entry.' }
     $appId = "$($Package.PackageFamilyName)!$application"
-    $shell = New-Object -ComObject WScript.Shell
-    $shortcut = $shell.CreateShortcut((Join-Path $DesktopDirectory 'Codex - 悟空Ai.lnk'))
-    $shortcut.TargetPath = Join-Path $env:WINDIR 'explorer.exe'
-    $shortcut.Arguments = "shell:AppsFolder\$appId"
-    $shortcut.Description = '打开 Codex 官方桌面客户端'
-    $shortcut.Save()
-    Start-Process -FilePath $shortcut.TargetPath -ArgumentList $shortcut.Arguments
+    $target = Join-Path $env:WINDIR 'explorer.exe'
+    $arguments = "shell:AppsFolder\$appId"
+    New-WukongDesktopShortcut (Join-Path $DesktopDirectory 'Codex - 悟空Ai.lnk') $target $arguments '打开 Codex 官方桌面客户端'
+    Start-Process -FilePath $target -ArgumentList $arguments
 }
 
 function Read-WukongApiKey {
