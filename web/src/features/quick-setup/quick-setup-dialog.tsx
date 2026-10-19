@@ -166,8 +166,10 @@ export function QuickSetupDialog(props: QuickSetupDialogProps) {
 
   const modelOptions = useMemo(() => {
     const items = modelsQuery.data?.data ?? []
-    return items.map((item) => ({ value: item, label: item }))
-  }, [modelsQuery.data])
+    return items
+      .filter((item) => client !== 'codex' || !/^gpt-image-/i.test(item))
+      .map((item) => ({ value: item, label: item }))
+  }, [modelsQuery.data, client])
 
   useEffect(() => {
     if (!props.open) return

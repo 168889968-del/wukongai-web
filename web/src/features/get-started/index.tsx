@@ -373,18 +373,33 @@ export function GetStarted() {
                     role='status'
                     className='mt-4 text-center text-sm text-sky-600'
                   >
-                    已发起下载 {installDownloaded}。 打开浏览器下载列表，双击
-                    BAT：自动安装桌面端，选择默认服务“悟空Ai”，粘贴 API
-                    密钥即可接入。安装时如弹出 Windows
-                    管理员授权框，请允许安装。
+                    已发起下载 {installDownloaded}。
+                    {installDownloaded.endsWith('-images.bat')
+                      ? '打开下载列表，双击 BAT，输入支持 gpt-image-2 的悟空Ai密钥，即可配置 API 生图。完成后重新打开 Codex 聊天。'
+                      : '打开浏览器下载列表，双击 BAT：自动安装桌面端，选择默认服务“悟空Ai”，粘贴 API 密钥即可接入。安装时如弹出 Windows 管理员授权框，请允许安装。'}
                   </p>
                 )}
                 {client === 'codex' && os === 'windows' && (
-                  <p className='mt-4 text-center text-sm text-slate-500'>
-                    下载一键部署 BAT，双击后自动安装官方桌面应用（自动识别 x64 /
-                    ARM64），创建桌面快捷方式。 默认服务为悟空Ai，输入 API
-                    密钥即可使用；已有配置会先备份。
-                  </p>
+                  <div className='mt-4 text-center text-sm text-slate-500'>
+                    <p>
+                      下载一键部署 BAT，双击后自动安装官方桌面应用（自动识别 x64
+                      / ARM64），创建桌面快捷方式。 默认服务为悟空Ai，输入 API
+                      密钥即可使用；已有配置会先备份。密钥支持 gpt-image-2
+                      时，会自动配置 API 生图。
+                    </p>
+                    <Button
+                      className='mt-3'
+                      variant='outline'
+                      onClick={() =>
+                        setInstallDownloaded(
+                          downloadWindowsTool('codex', 'images')
+                        )
+                      }
+                    >
+                      <Sparkles className='mr-2 size-4' />
+                      已安装 Codex？配置 API 生图
+                    </Button>
+                  </div>
                 )}
                 {client !== 'codex' && os === 'windows' && (
                   <p className='mt-4 text-center text-sm text-slate-500'>

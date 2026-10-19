@@ -203,10 +203,11 @@ function Read-WukongApiKey {
 
 function Get-WukongCodexModel([string]$Base, [string]$Key, [string]$SelectedModel = '') {
     $response = Invoke-RestMethod -Uri "$Base/v1/models" -Headers @{ Authorization = "Bearer $Key" } -TimeoutSec 30
-    $models = @($response.data | ForEach-Object { $_.id } | Where-Object { $_ -match '^(gpt-|o[1-9]|codex)' })
+    $script:wukongCodexModels = @($response.data | ForEach-Object { $_.id })
+    $models = @($script:wukongCodexModels | Where-Object { $_ -match '^(gpt-|o[1-9]|codex)' -and $_ -notmatch '^gpt-image-' })
     if (-not $models.Count) { throw 'This API key has no GPT/Codex models. Check the key permissions in the WukongAi console.' }
     if ($SelectedModel) {
-        if ($SelectedModel -notin @($response.data | ForEach-Object { $_.id })) { throw 'The selected model is not available to this API key.' }
+        if ($SelectedModel -notin $models) { throw 'The selected model is not available as a GPT/Codex chat model for this API key.' }
         return $SelectedModel
     }
     # Prefer the model used by the supplied reference when it is available to this key.
@@ -252,11 +253,27 @@ function Set-CodexDesktopConfiguration($InputConfig, [string]$CodexRoot) {
 try {
     $payload = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('__PAYLOAD__')) | ConvertFrom-Json
     $wukongWorkerEncoded = '__WORKER__'
+    $wukongImageFilesEncoded = '__IMAGEFILES__'
     Write-Host '悟空Ai - Codex 官方桌面端一键部署' -ForegroundColor Cyan
     Write-Host '此工具安装桌面应用；默认服务为 https://wukongai.work。密钥仅保存在本机。'
     $root = if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $env:USERPROFILE '.codex' }
     $root = [IO.Path]::GetFullPath($root)
     $mode = $payload.mode
+    if ($mode -eq 'images') {
+        $stage = '验证生图密钥权限'
+        $base = 'https://wukongai.work'
+        Write-Host '此工具为已有 Codex 配置悟空Ai API 生图，并补回 wukongai 服务定义；保留当前 ChatGPT 登录和默认聊天模型。'
+        $key = Read-WukongApiKey
+        $catalog = Invoke-RestMethod -Uri "$base/v1/models" -Headers @{Authorization="Bearer $key"} -TimeoutSec 30
+        if ('gpt-image-2' -notin @($catalog.data | ForEach-Object { $_.id })) { throw 'This key cannot access gpt-image-2. Select a WukongAi token in an image-enabled GPT group.' }
+        $stage = '备份并补回悟空Ai服务配置'
+        Set-CodexDesktopConfiguration @{client='codex';mode='setup';base=$base;key=$key;model='gpt-image-2';repairProviderOnly=$true} $root
+        $stage = '自动配置悟空Ai API 生图'
+        Install-WukongImageSupport $base $key $root
+        $key = $null
+        Write-Host '配置完成。请保存工作后重新打开 Codex 聊天，使新增技能生效。' -ForegroundColor Green
+        exit 0
+    }
     if ($mode -eq 'install') {
         Write-Host ''
         Write-Host '1. 使用默认服务：悟空Ai（推荐，安装后输入 API 密钥）'
@@ -295,6 +312,12 @@ try {
     }
     $stage = '备份并配置桌面客户端'
     Set-CodexDesktopConfiguration $configuration $root
+    if ($mode -ne 'restore' -and 'gpt-image-2' -in @($script:wukongCodexModels)) {
+        $stage = '自动配置悟空Ai API 生图'
+        Install-WukongImageSupport $base $key $root
+    } elseif ($mode -ne 'restore') {
+        Write-Host '当前密钥未开放 gpt-image-2，已配置聊天；生图尚未启用。可在权限开放后下载“API 生图配置”工具。' -ForegroundColor Yellow
+    }
     $configuration = $null
     $key = $null
     if ($mode -eq 'restore') {

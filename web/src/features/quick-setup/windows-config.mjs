@@ -11,7 +11,17 @@ export function configure(input, root, dependencies) {
   const TOML = requireDependency('@iarna/toml')
   const YAML = requireDependency('yaml')
   const fileSets = {
-    codex: ['config.toml', 'auth.json'],
+    codex: [
+      'config.toml',
+      'auth.json',
+      'skills/wukongai-imagegen/SKILL.md',
+      'skills/wukongai-imagegen/LICENSE.OpenAI.txt',
+      'skills/wukongai-imagegen/scripts/run.ps1',
+      'skills/wukongai-imagegen/scripts/read-key.ps1',
+      'skills/wukongai-imagegen/scripts/image_gen.py',
+      'skills/wukongai-imagegen/scripts/config.json',
+      'skills/wukongai-imagegen/scripts/key.bin',
+    ],
     claude: ['settings.json'],
     grok: input.desktop
       ? ['config.toml', 'desktop-config.json']
@@ -49,6 +59,7 @@ export function configure(input, root, dependencies) {
     if (!state?.active) return 'nothing-to-restore'
     if (state.client !== input.client) throw new Error('Backup client mismatch')
     for (const file of files) {
+      if (!Object.hasOwn(state.existed, file)) continue
       if (state.existed[file]) {
         if (!fs.existsSync(path.join(snapshot, file))) {
           throw new Error('Backup is incomplete')
@@ -56,6 +67,7 @@ export function configure(input, root, dependencies) {
       }
     }
     for (const file of files) {
+      if (!Object.hasOwn(state.existed, file)) continue
       if (state.existed[file]) {
         write(file, fs.readFileSync(path.join(snapshot, file)))
       } else if (fs.existsSync(path.join(root, file))) {
@@ -92,18 +104,47 @@ export function configure(input, root, dependencies) {
   const changes = {}
   if (input.client === 'codex') {
     const config = TOML.parse(read('config.toml'))
-    config.model_provider = 'wukongai'
-    config.model = input.model
+    if (!input.repairProviderOnly) {
+      config.model_provider = 'wukongai'
+      config.model = input.model
+    }
     config.model_providers = config.model_providers || {}
     config.model_providers.wukongai = {
       name: 'WukongAi',
       base_url: `${base}/v1`,
       wire_api: 'responses',
-      requires_openai_auth: true,
+      ...(input.repairProviderOnly
+        ? {
+            auth: {
+              command: path.join(
+                process.env.WINDIR || 'C:\\Windows',
+                'System32',
+                'WindowsPowerShell',
+                'v1.0',
+                'powershell.exe'
+              ),
+              args: [
+                '-NoProfile',
+                '-ExecutionPolicy',
+                'Bypass',
+                '-File',
+                path.join(
+                  root,
+                  'skills/wukongai-imagegen/scripts/read-key.ps1'
+                ),
+                '-Store',
+                path.join(root, 'skills/wukongai-imagegen/scripts/key.bin'),
+              ],
+              timeout_ms: 30000,
+            },
+          }
+        : { requires_openai_auth: true }),
     }
     changes['config.toml'] = TOML.stringify(config)
-    changes['auth.json'] =
-      `${JSON.stringify({ OPENAI_API_KEY: input.key }, null, 2)}\n`
+    if (!input.repairProviderOnly) {
+      changes['auth.json'] =
+        `${JSON.stringify({ OPENAI_API_KEY: input.key }, null, 2)}\n`
+    }
   } else if (input.client === 'claude') {
     const config = JSON.parse(read('settings.json') || '{}')
     config.env = {
@@ -198,7 +239,9 @@ export function configure(input, root, dependencies) {
   fs.mkdirSync(snapshot, { recursive: true, mode: 0o700 })
   if (!state?.active) {
     state = { client: input.client, active: true, existed: {} }
-    for (const file of files) {
+  }
+  for (const file of files) {
+    if (!Object.hasOwn(state.existed, file)) {
       state.existed[file] = fs.existsSync(path.join(root, file))
       if (state.existed[file]) {
         fs.mkdirSync(path.dirname(path.join(snapshot, file)), {
@@ -207,8 +250,8 @@ export function configure(input, root, dependencies) {
         fs.copyFileSync(path.join(root, file), path.join(snapshot, file))
       }
     }
-    fs.writeFileSync(manifestPath, JSON.stringify(state), { mode: 0o600 })
   }
+  fs.writeFileSync(manifestPath, JSON.stringify(state), { mode: 0o600 })
   try {
     for (const [file, content] of Object.entries(changes)) write(file, content)
   } catch (error) {

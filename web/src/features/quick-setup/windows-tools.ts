@@ -1,6 +1,13 @@
 import codexDesktopRunner from './codex-desktop.ps1?raw'
 import graphicalDesktopRunner from './desktop-clients.ps1?raw'
 import desktopReleases from './desktop-releases.json?raw'
+import imageCli from './imagegen/image_gen.py?raw'
+import imageSupport from './imagegen/install.ps1?raw'
+import imageLicense from './imagegen/LICENSE.OpenAI.txt?raw'
+import imageReadKey from './imagegen/read-key.ps1?raw'
+import imageRun from './imagegen/run.ps1?raw'
+import imageRuntime from './imagegen/runtime.json'
+import imageSkill from './imagegen/SKILL.md?raw'
 import configurationWorker from './windows-config.mjs?raw'
 import windowsRunner from './windows-runner.ps1?raw'
 
@@ -19,9 +26,12 @@ function encode(value: string): string {
 
 export function buildWindowsTool(
   client: WindowsClient,
-  mode: 'setup' | 'restore' | 'install',
+  mode: 'setup' | 'restore' | 'install' | 'images',
   config?: { base: string; key: string; model: string }
 ): string {
+  if (mode === 'images' && client !== 'codex') {
+    throw new Error('Image configuration is available for Codex')
+  }
   if (mode === 'setup' && (!config?.base || !config.key || !config.model)) {
     throw new Error('Select a key and model before downloading')
   }
@@ -30,13 +40,26 @@ export function buildWindowsTool(
   const sharedRunner = windowsRunner.replaceAll('\r\n', '\n')
   const desktopRunner =
     client === 'codex'
-      ? codexDesktopRunner
+      ? `${imageSupport}\n${codexDesktopRunner}`
       : `${codexDesktopRunner.split('# WUKONGAI_DESKTOP_MAIN')[0]}\n${graphicalDesktopRunner}`
   const runner = `${sharedRunner.slice(0, sharedRunner.indexOf('\ntry {\n    $payload'))}\n${desktopRunner}`
   const script = runner
     .replace('__PAYLOAD__', encode(JSON.stringify(payload)))
     .replace('__WORKER__', encode(configurationWorker))
     .replace('__RELEASES__', encode(desktopReleases))
+    .replace(
+      '__IMAGEFILES__',
+      encode(
+        JSON.stringify({
+          cli: imageCli,
+          skill: imageSkill,
+          run: imageRun,
+          readKey: imageReadKey,
+          runtime: imageRuntime,
+          license: imageLicense,
+        })
+      )
+    )
   return [
     '@echo off',
     'setlocal',
@@ -54,7 +77,7 @@ export function buildWindowsTool(
 
 export function downloadWindowsTool(
   client: WindowsClient,
-  mode: 'setup' | 'restore' | 'install',
+  mode: 'setup' | 'restore' | 'install' | 'images',
   config?: { base: string; key: string; model: string }
 ): string {
   const fileName = `wukongai-${client}-${mode}.bat`
