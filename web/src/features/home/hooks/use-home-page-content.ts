@@ -16,11 +16,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import i18next from 'i18next'
 import { useEffect, useState } from 'react'
 
 import { isHttpUrl } from '@/lib/content-format'
-import { handleServerError } from '@/lib/handle-server-error'
 
 import { getHomePageContent } from '../api'
 import type { HomePageContentResult } from '../types'
@@ -32,21 +30,21 @@ const STORAGE_KEY = 'home_page_content'
  * Supports both Markdown/HTML content and iframe URLs
  */
 export function useHomePageContent(): HomePageContentResult {
-  const [content, setContent] = useState<string>('')
-  const [isLoaded, setIsLoaded] = useState(false)
+  const [content, setContent] = useState<string>(() => {
+    try {
+      return localStorage.getItem(STORAGE_KEY) || ''
+    } catch {
+      return ''
+    }
+  })
 
   useEffect(() => {
     let mounted = true
+    const controller = new AbortController()
 
     const loadContent = async () => {
-      // Load from localStorage first for immediate display
-      const cached = localStorage.getItem(STORAGE_KEY)
-      if (cached && mounted) {
-        setContent(cached)
-      }
-
       try {
-        const response = await getHomePageContent()
+        const response = await getHomePageContent(controller.signal)
         const { success, data } = response
 
         if (!mounted) return
@@ -59,13 +57,8 @@ export function useHomePageContent(): HomePageContentResult {
           setContent('')
           localStorage.removeItem(STORAGE_KEY)
         }
-      } catch (error) {
-        if (!mounted) return
-        handleServerError(error, i18next.t('Failed to load home page content'))
-      } finally {
-        if (mounted) {
-          setIsLoaded(true)
-        }
+      } catch {
+        // Optional custom content must not block the default or cached home page.
       }
     }
 
@@ -73,10 +66,11 @@ export function useHomePageContent(): HomePageContentResult {
 
     return () => {
       mounted = false
+      controller.abort()
     }
   }, [])
 
   const isUrl = isHttpUrl(content)
 
-  return { content, isLoaded, isUrl }
+  return { content, isLoaded: true, isUrl }
 }

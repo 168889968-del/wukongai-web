@@ -18,7 +18,14 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 import { Gift, WalletCards } from 'lucide-react'
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useState,
+  type ReactNode,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Dialog } from '@/components/dialog'
@@ -29,7 +36,6 @@ import { ThemeSwitch } from '@/components/theme-switch'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SystemUpdateAction } from '@/features/system-update/system-update-action'
-import { RechargeDialog } from '@/features/wallet/components/recharge-dialog'
 import { useNotifications } from '@/hooks/use-notifications'
 import { useSystemConfig } from '@/hooks/use-system-config'
 import { useTopNavLinks } from '@/hooks/use-top-nav-links'
@@ -41,6 +47,11 @@ import type { TopNavLink } from '../types'
 import { HeaderLogo } from './header-logo'
 
 const AUTH_PROMPT_SECONDS = 5
+const RechargeDialog = lazy(() =>
+  import('@/features/wallet/components/recharge-dialog').then((module) => ({
+    default: module.RechargeDialog,
+  }))
+)
 
 type AuthPromptTarget = {
   title: string
@@ -418,7 +429,14 @@ export function PublicHeader(props: PublicHeaderProps) {
       </header>
 
       {isAuthenticated && (
-        <RechargeDialog open={rechargeOpen} onOpenChange={setRechargeOpen} />
+        <Suspense fallback={null}>
+          {rechargeOpen && (
+            <RechargeDialog
+              open={rechargeOpen}
+              onOpenChange={setRechargeOpen}
+            />
+          )}
+        </Suspense>
       )}
 
       {/* Mobile full-screen overlay */}

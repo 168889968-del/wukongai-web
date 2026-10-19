@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { Download, RotateCcw, Terminal } from 'lucide-react'
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { CopyButton } from '@/components/copy-button'
@@ -12,7 +12,6 @@ import {
   type ClientType,
   type OsType,
 } from '@/features/quick-setup/configuration'
-import { QuickSetupDialog } from '@/features/quick-setup/quick-setup-dialog'
 import {
   downloadWindowsTool,
   isWindowsClient,
@@ -20,6 +19,12 @@ import {
 import { getLobeIcon } from '@/lib/lobe-icon'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
+
+const QuickSetupDialog = lazy(() =>
+  import('@/features/quick-setup/quick-setup-dialog').then((module) => ({
+    default: module.QuickSetupDialog,
+  }))
+)
 
 /** Official install commands for each client */
 const INSTALL_COMMANDS: Record<string, Record<OsType, string>> = {
@@ -284,12 +289,16 @@ export function HowItWorks() {
         </div>
       </div>
 
-      <QuickSetupDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        initialClient={client}
-        initialOs={os}
-      />
+      {dialogOpen && (
+        <Suspense fallback={null}>
+          <QuickSetupDialog
+            open={dialogOpen}
+            onOpenChange={setDialogOpen}
+            initialClient={client}
+            initialOs={os}
+          />
+        </Suspense>
+      )}
     </section>
   )
 }
