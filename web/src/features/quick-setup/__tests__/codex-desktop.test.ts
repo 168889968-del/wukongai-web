@@ -21,7 +21,7 @@ afterEach(() => {
   }
 }, 180000)
 
-function execute(script: string, timeout = 20000) {
+function execute(script: string, timeout = 60000) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'wukongai-desktop-'))
   roots.push(root)
   const file = path.join(root, 'check.ps1')

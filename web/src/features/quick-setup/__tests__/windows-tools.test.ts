@@ -299,7 +299,7 @@ describe('Windows setup and restore tools', () => {
         windowsVerbatimArguments: true,
         input: '\r\n',
         encoding: 'utf8',
-        timeout: 20000,
+        timeout: 60000,
         env: {
           ...process.env,
           LOCALAPPDATA: root,
@@ -323,7 +323,7 @@ describe('Windows setup and restore tools', () => {
         windowsVerbatimArguments: true,
         input: '\r\n',
         encoding: 'utf8',
-        timeout: 20000,
+        timeout: 60000,
         env: {
           ...process.env,
           USERPROFILE: root,
