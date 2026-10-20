@@ -225,6 +225,7 @@ function Open-GraphicalDesktop([string]$Client, $Launch, [string]$ConfigRoot) {
 
 # WUKONGAI_GRAPHICAL_MAIN
 try {
+    Assert-WukongWindowsVersion
     $payload = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('__PAYLOAD__')) | ConvertFrom-Json
     $wukongWorkerEncoded = '__WORKER__'
     $desktopReleases = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('__RELEASES__')) | ConvertFrom-Json

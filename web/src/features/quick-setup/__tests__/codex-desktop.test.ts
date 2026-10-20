@@ -113,10 +113,73 @@ try { Install-CodexDesktop $env:WUKONGAI_DESKTOP_TEST_ROOT; throw 'Unexpected su
       execute(`
 function Get-CodexDesktop { return $null }
 function Get-CodexMsixIdentity { [pscustomobject]@{ ProcessorArchitecture='x64'; Version='1.0.0.0' } }
-function Add-AppxPackage { param($Path, $ErrorAction) }
+function Install-WukongMsix { param($Path) }
 $env:PROCESSOR_ARCHITECTURE='AMD64'; $env:PROCESSOR_ARCHITEW6432=''
 [IO.File]::WriteAllText((Join-Path $env:WUKONGAI_DESKTOP_TEST_ROOT 'Codex-Windows安装包.Msix'), 'test')
 try { Install-CodexDesktop $env:WUKONGAI_DESKTOP_TEST_ROOT; throw 'Unexpected success' } catch { if ($_.Exception.Message -notlike '*did not register*') { throw } }
+`)
+    })
+
+    it('uses the system AppX volume in both normal and elevated installs despite a secondary default volume', () => {
+      const { root } = execute(`
+$env:PSModulePath=(Join-Path $PSHOME 'Modules')+';'+$env:PSModulePath
+Import-Module Microsoft.PowerShell.Security -ErrorAction Stop
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$source=Join-Path $env:WUKONGAI_DESKTOP_TEST_ROOT 'msix'
+New-Item -ItemType Directory -Path $source | Out-Null
+[IO.File]::WriteAllText((Join-Path $source 'AppxManifest.xml'), '<Package><Dependencies><TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.18362.0" /></Dependencies></Package>')
+$package=Join-Path $env:WUKONGAI_DESKTOP_TEST_ROOT 'app.msix'
+[IO.Compression.ZipFile]::CreateFromDirectory($source,$package)
+function Get-AppxDefaultVolume { throw 'The global default must not be used or modified' }
+function Set-AppxDefaultVolume { throw 'The global default must not be modified' }
+function Get-AppxVolume { @([pscustomobject]@{Name='broken-D';IsSystemVolume=$false;IsOffline=$false},[pscustomobject]@{Name='system-C';IsSystemVolume=$true;IsOffline=$false}) }
+function Add-AppxPackage { param($Path,$Volume,$ErrorAction)
+ if ($Volume.Name -ne 'system-C') { throw 'Wrong install volume' }
+ [IO.File]::WriteAllText((Join-Path $env:WUKONGAI_DESKTOP_TEST_ROOT 'normal.txt'),'system-C')
+}
+Install-WukongMsix $package
+function Add-AppxPackage { param($Path,$Volume,$ErrorAction) if ($Volume.Name -ne 'system-C') {throw 'Wrong volume before elevation'};throw '0x80070005' }
+function Start-Process { param($FilePath,$Verb,$ArgumentList,[switch]$PassThru,[switch]$Wait)
+ if ($Verb -ne 'RunAs') {throw 'Elevation was not requested'}
+ $encoded=($ArgumentList -split ' ')[-1]
+ $helper=[Text.Encoding]::Unicode.GetString([Convert]::FromBase64String($encoded))
+ $mocks=@'
+function Get-AppxVolume { @([pscustomobject]@{Name='broken-D';IsSystemVolume=$false;IsOffline=$false},[pscustomobject]@{Name='system-C';IsSystemVolume=$true;IsOffline=$false}) }
+function Add-AppxPackage { param($Path,$Volume,$ErrorAction) if($Volume.Name -ne 'system-C'){throw 'Wrong elevated install volume'};[IO.File]::WriteAllText((Join-Path $env:WUKONGAI_DESKTOP_TEST_ROOT 'elevated.txt'),'system-C') }
+'@
+ $command=[Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($mocks+[Environment]::NewLine+$helper))
+ & $FilePath -NoProfile -EncodedCommand $command
+ return [pscustomobject]@{ExitCode=$LASTEXITCODE}
+}
+Install-WukongMsix $package
+`)
+      expect(fs.readFileSync(path.join(root, 'normal.txt'), 'utf8')).toBe(
+        'system-C'
+      )
+      expect(fs.readFileSync(path.join(root, 'elevated.txt'), 'utf8')).toBe(
+        'system-C'
+      )
+    })
+
+    it('rejects unsupported Windows builds and unavailable system volumes before installation', () => {
+      execute(`
+function Get-ItemProperty { [pscustomobject]@{CurrentBuildNumber='7601'} }
+$blocked=$false
+try { Assert-WukongWindowsVersion } catch { $blocked=$true }
+if (-not $blocked) {throw 'Windows 7 was accepted'}
+foreach($build in @('19045','26200')) {
+ $script:build=$build
+ function Get-ItemProperty { [pscustomobject]@{CurrentBuildNumber=$script:build} }
+ Assert-WukongWindowsVersion
+}
+$blocked=$false
+try { Assert-WukongWindowsVersion ([version]'10.0.99999.0') } catch {$blocked=$true}
+if(-not $blocked){throw 'Package minimum build was ignored'}
+function Get-AppxVolume { @([pscustomobject]@{Name='offline-C';IsSystemVolume=$true;IsOffline=$true},[pscustomobject]@{Name='D';IsSystemVolume=$false;IsOffline=$false}) }
+function Add-AppxPackage { throw 'Must not install to an offline or secondary volume' }
+$blocked=$false
+try { Install-WukongMsixPackage 'unused.msix' } catch {$blocked=$true}
+if(-not $blocked){throw 'An unavailable system volume was accepted'}
 `)
     })
 

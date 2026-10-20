@@ -60,9 +60,42 @@ function Save-CodexInstaller([string]$Url, [string]$Path) {
     }
 }
 
-function Install-WukongMsix([string]$Path) {
+function Assert-WukongWindowsVersion([version]$Minimum = '10.0.10240.0') {
+    $build = [int](Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -ErrorAction Stop).CurrentBuildNumber
+    if ($build -lt 10240) { throw '此工具仅支持 Windows 10 / 11，不支持 Windows 7 / 8 / 8.1。请先升级系统。' }
+    if ($PSVersionTable.PSVersion -lt [version]'5.1') { throw '请先通过 Windows Update 安装 Windows PowerShell 5.1，再运行工具。' }
+    if ([version]"10.0.$build.0" -lt $Minimum) { throw "此安装包要求 Windows $Minimum 或更新版本；当前内部版本为 $build。请先通过 Windows Update 更新系统。" }
+}
+
+function Install-WukongMsixPackage([string]$Path) {
+    # A broken secondary default AppX volume must not redirect a new installation.
+    # This selects a volume for this package only; the user's global default is untouched.
+    $volume = Get-AppxVolume -ErrorAction Stop | Where-Object { $_.IsSystemVolume -and -not $_.IsOffline } | Select-Object -First 1
+    if (-not $volume) { throw 'Windows 系统盘的应用安装卷不可用。请修复 Windows 应用安装服务后重试。' }
+    Add-AppxPackage -Path $Path -Volume $volume -ErrorAction Stop
+}
+
+function Assert-WukongMsixRequirements([string]$Path) {
+    Assert-WukongWindowsVersion
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $archive = [IO.Compression.ZipFile]::OpenRead($Path)
     try {
-        Add-AppxPackage -Path $Path -ErrorAction Stop
+        $manifestEntry = $archive.GetEntry('AppxManifest.xml')
+        if (-not $manifestEntry) { throw '安装包缺少 AppxManifest.xml，请重新下载安装包。' }
+        $reader = [IO.StreamReader]::new($manifestEntry.Open())
+        try { [xml]$manifest = $reader.ReadToEnd() } finally { $reader.Dispose() }
+        foreach ($family in @($manifest.Package.Dependencies.TargetDeviceFamily)) {
+            if ($family -and $family.Name -in @('Windows.Desktop', 'Windows.Universal') -and $family.MinVersion) {
+                Assert-WukongWindowsVersion ([version]$family.MinVersion)
+            }
+        }
+    } finally { $archive.Dispose() }
+}
+
+function Install-WukongMsix([string]$Path) {
+    Assert-WukongMsixRequirements $Path
+    try {
+        Install-WukongMsixPackage $Path
         return
     } catch {
         # Packaged services require an elevated token, even for a per-user MSIX.
@@ -75,12 +108,14 @@ function Install-WukongMsix([string]$Path) {
     $originalSid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
     # Elevate only fixed installation code, never the BAT or a writable helper file.
     # No payload, API key or configuration code is passed to the elevated process.
+    $installDefinition = "function Install-WukongMsixPackage {`n$(${function:Install-WukongMsixPackage}.ToString())`n}"
     $installScript = @"
 `$ErrorActionPreference = 'Stop'
+$installDefinition
 try {
     if ([Security.Principal.WindowsIdentity]::GetCurrent().User.Value -ne '$originalSid') { exit 83 }
     if ((Get-FileHash -LiteralPath '$installerPath' -Algorithm SHA256).Hash -ne '$expectedHash') { exit 84 }
-    Add-AppxPackage -Path '$installerPath' -ErrorAction Stop
+    Install-WukongMsixPackage '$installerPath'
     exit 0
 } catch { Write-Host `$_ -ForegroundColor Red; Read-Host 'Press Enter to return'; exit 85 }
 "@
@@ -251,6 +286,7 @@ function Set-CodexDesktopConfiguration($InputConfig, [string]$CodexRoot) {
 
 # WUKONGAI_DESKTOP_MAIN
 try {
+    Assert-WukongWindowsVersion
     $payload = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('__PAYLOAD__')) | ConvertFrom-Json
     $wukongWorkerEncoded = '__WORKER__'
     $wukongImageFilesEncoded = '__IMAGEFILES__'

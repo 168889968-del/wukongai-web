@@ -57,6 +57,7 @@ function execute(script: string, timeout = 60000) {
 describe('MSIX administrator consent', () => {
   it('installs without elevation when Windows accepts the current token', () => {
     execute(`
+function Assert-WukongMsixRequirements { }
 function Add-AppxPackage { param($Path, $ErrorAction) $script:installed = $Path }
 function Start-Process { throw 'Unexpected administrator prompt' }
 Install-WukongMsix 'existing.msix'
@@ -66,6 +67,7 @@ if ($script:installed -ne 'existing.msix') { throw 'Installer was not called' }
 
   it('retries packaged-service failures with installation-only administrator consent', () => {
     execute(`
+function Assert-WukongMsixRequirements { }
 $installer = Join-Path $env:WUKONGAI_TEST_ROOT "安装包's.msix"
 [IO.File]::WriteAllText($installer, 'test installer')
 $payload = @{ key = 'sk-test-never-elevate'; base = 'https://wukongai.work' }
@@ -95,6 +97,7 @@ if ($payload.key -ne 'sk-test-never-elevate') { throw 'Parent configuration chan
 
   it('stops on rejected consent, another administrator account, or installer failure', () => {
     execute(`
+function Assert-WukongMsixRequirements { }
 $installer = Join-Path $env:WUKONGAI_TEST_ROOT 'test.msix'
 [IO.File]::WriteAllText($installer, 'test')
 function Add-AppxPackage { throw '0x80073D28' }
@@ -110,6 +113,7 @@ foreach ($status in @(83, 84, 85, 1223)) {
 
   it('preserves unrelated installation errors without asking for elevation', () => {
     execute(`
+function Assert-WukongMsixRequirements { }
 function Add-AppxPackage { throw '0x80073CF3 missing dependency' }
 function Start-Process { throw 'Unexpected administrator prompt' }
 try { Install-WukongMsix 'test.msix'; throw 'False success' }
