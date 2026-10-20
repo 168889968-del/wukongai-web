@@ -59,12 +59,9 @@ async function showClaudeSetup(models: string[]) {
   return userEvent.setup()
 }
 
-it('shows the customer warning and excludes GPT from Claude model choices', async () => {
+it('excludes GPT from Claude model choices without a standalone warning', async () => {
   const user = await showClaudeSetup(['gpt-6.1-sol', 'claude-sonnet-5-5'])
-  expect(screen.getByRole('alert')).toHaveTextContent(
-    'Claude 桌面版仅支持 Claude 模型'
-  )
-  expect(screen.getByRole('alert')).toHaveTextContent('ChatGPT / Codex')
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   await user.click(screen.getByRole('combobox', { name: '模型' }))
   expect(
     await screen.findByRole('option', { name: 'claude-sonnet-5-5' })

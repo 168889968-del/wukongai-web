@@ -207,7 +207,7 @@ function Get-WukongDesktopModel([string]$Client, [string]$Base, [string]$Key, [s
     $pattern = @{claude='(^|[/.])(claude[-.]|anthropic[/.])';grok='grok';deepseek='deepseek'}[$Client]
     $models = @($response.data | ForEach-Object { $_.id } | Where-Object { $_ -match $pattern })
     if ($SelectedModel) {
-        if ($SelectedModel -notin @($response.data | ForEach-Object { $_.id })) { throw 'The selected model is not available to this API key.' }
+        if ($SelectedModel -notin @($response.data | ForEach-Object { $_.id })) { throw '当前 API 密钥没有所选模型的使用权限。请检查密钥和模型，回到网站重新选择后下载 BAT。尚未写入配置。' }
         return $SelectedModel
     }
     if (-not $models.Count) { throw "This API key has no $Client models. Check model permissions in the WukongAi console." }
@@ -228,6 +228,7 @@ function Open-GraphicalDesktop([string]$Client, $Launch, [string]$ConfigRoot) {
 
 # WUKONGAI_GRAPHICAL_MAIN
 try {
+    $stage = '检查系统和客户端模型兼容性'
     Assert-WukongWindowsVersion
     $payload = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('__PAYLOAD__')) | ConvertFrom-Json
     $wukongWorkerEncoded = '__WORKER__'

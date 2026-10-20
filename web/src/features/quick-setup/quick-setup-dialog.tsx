@@ -31,7 +31,6 @@ import { useTranslation } from 'react-i18next'
 
 import { CopyButton } from '@/components/copy-button'
 import { Dialog } from '@/components/dialog'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Combobox } from '@/components/ui/combobox'
 import { Label } from '@/components/ui/label'
@@ -379,15 +378,6 @@ export function QuickSetupDialog(props: QuickSetupDialogProps) {
             </section>
 
             <section className='space-y-2.5'>
-              {client === 'claude' && (
-                <Alert className='border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30'>
-                  <AlertDescription className='text-amber-900 dark:text-amber-200'>
-                    {t(
-                      'Claude Desktop only supports Claude models. To use GPT models, choose ChatGPT / Codex.'
-                    )}
-                  </AlertDescription>
-                </Alert>
-              )}
               <Label htmlFor='quick-setup-model'>
                 {currentClient.modelRequired
                   ? t('3. 选择模型（必填）')
