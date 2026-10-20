@@ -58,12 +58,6 @@ export const PRIMARY_OPTIONS: ClientOption[] = [
 
 export const MORE_OPTIONS: ClientOption[] = [
   {
-    value: 'gemini',
-    label: 'Gemini CLI',
-    hint: 'Google Gemini CLI',
-    modelRequired: false,
-  },
-  {
     value: 'openai',
     label: '通用接口',
     hint: 'Cherry Studio、ChatBox、Cursor 等',
