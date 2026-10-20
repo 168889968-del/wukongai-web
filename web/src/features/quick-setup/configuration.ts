@@ -78,6 +78,16 @@ export const CLIENT_OPTIONS: ClientOption[] = [
 
 export const BACKUP_SUFFIX = '.wukongai.bak'
 
+export function isClientModelCompatible(
+  client: ClientType,
+  model: string
+): boolean {
+  // Claude Desktop rejects non-Anthropic models before showing its model picker.
+  return (
+    client !== 'claude' || /(^|[/.])(claude[-.]|anthropic[/.])/i.test(model)
+  )
+}
+
 export function getServerAddress(): string {
   try {
     const raw = localStorage.getItem('status')

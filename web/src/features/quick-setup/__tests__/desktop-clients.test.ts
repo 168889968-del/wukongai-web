@@ -439,7 +439,14 @@ function Invoke-RestMethod { @{data=@(@{id='claude-test'},@{id='grok-test'},@{id
 foreach ($client in @('claude','grok','deepseek')) {
 if ((Get-WukongDesktopModel $client 'https://wukongai.work' 'test-key' '') -ne "$client-test") {throw 'Wrong model family'}
 }
-try { Get-WukongDesktopModel 'claude' 'https://wukongai.work' 'test-key' 'missing';throw 'Unexpected success' } catch { if ($_.Exception.Message -notlike '*not available*') {throw} }
+try { Get-WukongDesktopModel 'claude' 'https://wukongai.work' 'test-key' 'claude-missing';throw 'Unexpected success' } catch { if ($_.Exception.Message -notlike '*not available*') {throw} }
+`)
+    })
+    it('rejects GPT in Claude before requesting models from the gateway', () => {
+      execute(`
+function Invoke-RestMethod { throw 'MUST_NOT_REQUEST' }
+try { Get-WukongDesktopModel 'claude' 'https://wukongai.work' 'sk-test-only' 'gpt-6.1-sol';throw 'Unexpected success' }
+catch { if ($_.Exception.Message -notlike '*ChatGPT / Codex*') {throw} }
 `)
     })
   }

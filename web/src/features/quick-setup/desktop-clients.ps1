@@ -200,8 +200,11 @@ function Set-ClaudeDesktopGateway($Configuration, [string]$BackupDirectory, [str
 }
 
 function Get-WukongDesktopModel([string]$Client, [string]$Base, [string]$Key, [string]$SelectedModel) {
+    if ($Client -eq 'claude' -and $SelectedModel -and $SelectedModel -notmatch '(^|[/.])(claude[-.]|anthropic[/.])') {
+        throw 'Claude 桌面版不支持 GPT、Grok 或 DeepSeek 模型。请在网站选择 Claude 模型；如需使用 GPT，请选择 ChatGPT / Codex 客户端。尚未写入配置。'
+    }
     $response = Invoke-RestMethod -Uri "$Base/v1/models" -Headers @{ Authorization = "Bearer $Key" } -TimeoutSec 30
-    $pattern = @{claude='claude';grok='grok';deepseek='deepseek'}[$Client]
+    $pattern = @{claude='(^|[/.])(claude[-.]|anthropic[/.])';grok='grok';deepseek='deepseek'}[$Client]
     $models = @($response.data | ForEach-Object { $_.id } | Where-Object { $_ -match $pattern })
     if ($SelectedModel) {
         if ($SelectedModel -notin @($response.data | ForEach-Object { $_.id })) { throw 'The selected model is not available to this API key.' }
@@ -231,6 +234,9 @@ try {
     $desktopReleases = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('__RELEASES__')) | ConvertFrom-Json
     $client = $payload.client
     if ($client -notin @('claude', 'grok', 'deepseek')) { throw 'Unknown desktop client.' }
+    if ($client -eq 'claude' -and $payload.mode -eq 'setup' -and $payload.model -notmatch '(^|[/.])(claude[-.]|anthropic[/.])') {
+        throw 'Claude 桌面版只接受 Claude 模型。如需 GPT，请回到网站选择 ChatGPT / Codex，并重新下载配置工具。尚未安装或修改配置。'
+    }
     $names = @{claude='Claude 官方桌面版';deepseek='DeepSeek Harness 官方桌面版';grok='Grok Build Desktop 开源社区桌面版'}
     Write-Host "悟空Ai - $($names[$client]) 一键部署" -ForegroundColor Cyan
     Write-Host '默认服务：https://wukongai.work。输入的 API 密钥仅保存在本机。'

@@ -52,7 +52,7 @@ jobs:
       - name: Check types
         run: bun run typecheck
       - name: Test recharge and configuration tools
-        run: bun run test src/features/wallet/__tests__/recharge-layout.test.tsx src/features/quick-setup/__tests__/windows-tools.test.ts
+        run: bun run test src/features/wallet/__tests__/recharge-layout.test.tsx src/features/quick-setup/__tests__/windows-tools.test.ts src/features/quick-setup/__tests__/quick-setup-dialog.test.tsx
       - name: Lint website components
         run: bunx oxlint -c .oxlintrc.json src/features/wallet/components/recharge-dialog.tsx src/features/wallet/components/recharge-form-card.tsx src/features/wallet/__tests__/recharge-layout.test.tsx src/components/layout/components/public-header.tsx src/features/quick-setup/configuration.ts src/features/quick-setup/windows-tools.ts src/features/quick-setup/windows-config.mjs src/features/quick-setup/quick-setup-dialog.tsx src/features/quick-setup/__tests__/windows-tools.test.ts src/features/quick-setup/__tests__/windows-installer.test.ts src/features/get-started/index.tsx src/features/home/components/sections/how-it-works.tsx rsbuild.config.ts
       - name: Check recharge formatting

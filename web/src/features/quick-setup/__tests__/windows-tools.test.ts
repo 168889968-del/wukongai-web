@@ -7,6 +7,7 @@ import * as TOML from '@iarna/toml'
 import { afterEach, describe, expect, it } from 'vitest'
 import YAML from 'yaml'
 
+import { isClientModelCompatible } from '../configuration'
 import { configure } from '../windows-config.mjs'
 import { buildWindowsTool, type WindowsClient } from '../windows-tools'
 
@@ -46,7 +47,7 @@ describe('Windows setup and restore tools', () => {
     const bat = buildWindowsTool('claude', 'setup', {
       base: 'https://wukongai.work',
       key: 'sk-local-test-only',
-      model: '示例模型',
+      model: 'claude-示例模型',
     })
     const parts = [...bat.matchAll(/FromBase64String\('([^']+)'\)/g)]
     const workerEncoded = bat.match(/\$wukongWorkerEncoded = '([^']+)'/)?.[1]
@@ -62,16 +63,17 @@ describe('Windows setup and restore tools', () => {
     expect(
       JSON.parse(fs.readFileSync(path.join(root, 'settings.json'), 'utf8')).env
         .ANTHROPIC_MODEL
-    ).toBe('示例模型')
+    ).toBe('claude-示例模型')
   })
   it.each(clients)(
     '%s generates a self-contained BAT and keeps input out of executable code',
     (client) => {
       const key = "sk-example-'& echo unsafe | %PATH%"
+      const model = client === 'claude' ? 'claude-example' : 'example-model'
       const bat = buildWindowsTool(client, 'setup', {
         base: 'https://wukongai.work',
         key,
-        model: 'example-model',
+        model,
       })
       expect(bat.startsWith('@echo off\r\n')).toBe(true)
       expect(bat).toContain('powershell.exe -NoProfile')
@@ -84,13 +86,82 @@ describe('Windows setup and restore tools', () => {
         mode: 'setup',
         base: 'https://wukongai.work',
         key,
-        model: 'example-model',
+        model,
       })
       const restore = buildWindowsTool(client, 'restore')
       const restorePayload = restore.match(/FromBase64String\('([^']+)'\)/)?.[1]
       expect(
         JSON.parse(Buffer.from(restorePayload ?? '', 'base64').toString())
       ).toEqual({ client, mode: 'restore' })
+    }
+  )
+
+  it.each(['gpt-6.1-sol', 'grok-4', 'deepseek-v4-pro'])(
+    'rejects %s for Claude before producing a customer download',
+    (model) => {
+      expect(isClientModelCompatible('claude', model)).toBe(false)
+      expect(() =>
+        buildWindowsTool('claude', 'setup', {
+          base: 'https://wukongai.work',
+          key: 'sk-test-only',
+          model,
+        })
+      ).toThrow('ChatGPT / Codex')
+    }
+  )
+
+  it('keeps valid Claude gateway routes and GPT models for Codex selectable', () => {
+    for (const model of [
+      'claude-sonnet-5-5',
+      'anthropic/claude-opus-5-5',
+      'bedrock/us.anthropic.claude-sonnet-4-6',
+    ]) {
+      expect(isClientModelCompatible('claude', model)).toBe(true)
+      expect(
+        buildWindowsTool('claude', 'setup', {
+          base: 'https://wukongai.work',
+          key: 'sk-test-only',
+          model,
+        })
+      ).toContain('@echo off')
+    }
+    expect(isClientModelCompatible('codex', 'gpt-6.1-sol')).toBe(true)
+  })
+
+  it.runIf(process.platform === 'win32')(
+    'stops an old incompatible Claude payload before installation or configuration',
+    () => {
+      const root = temporaryHome()
+      const bat = buildWindowsTool('claude', 'setup', {
+        base: 'https://wukongai.work',
+        key: 'sk-test-only',
+        model: 'claude-example',
+      })
+      const payload = bat.match(/FromBase64String\('([^']+)'\)/)?.[1]
+      if (!payload) throw new Error('Missing payload')
+      const decoded = JSON.parse(Buffer.from(payload, 'base64').toString())
+      decoded.model = 'gpt-6.1-sol'
+      const script = bat
+        .split('# WUKONGAI_SCRIPT\r\n')[1]
+        .replace(
+          payload,
+          Buffer.from(JSON.stringify(decoded)).toString('base64')
+        )
+        .replace(
+          '# WUKONGAI_GRAPHICAL_MAIN',
+          "function Install-GraphicalDesktop { throw 'MUST_NOT_INSTALL' }\n# WUKONGAI_GRAPHICAL_MAIN"
+        )
+      const file = path.join(root, 'incompatible.ps1')
+      fs.writeFileSync(file, `\ufeff${script}`)
+      const result = spawnSync(
+        'powershell.exe',
+        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', file],
+        { encoding: 'utf8', timeout: 30000, windowsHide: true }
+      )
+      expect(result.status).not.toBe(0)
+      expect(result.stdout).toContain('ChatGPT / Codex')
+      expect(result.stdout + result.stderr).not.toContain('MUST_NOT_INSTALL')
+      expect(result.stdout).not.toContain('sk-test-only')
     }
   )
 

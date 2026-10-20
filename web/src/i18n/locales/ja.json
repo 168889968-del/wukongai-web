@@ -7297,6 +7297,8 @@
     "Download and double-click the BAT file to install and configure the client.": "Download and double-click the BAT file to install and configure the client.",
     "The tool saves your original configuration before connecting to WukongAi.": "The tool saves your original configuration before connecting to WukongAi.",
     "Downloaded: {{file}}. Double-click it to run.": "Downloaded: {{file}}. Double-click it to run.",
-    "The setup file contains your API key. Keep it private.": "The setup file contains your API key. Keep it private."
+    "The setup file contains your API key. Keep it private.": "The setup file contains your API key. Keep it private.",
+    "Claude Desktop only supports Claude models. To use GPT models, choose ChatGPT / Codex.": "Claude デスクトップは Claude モデルのみ対応しています。GPT を使う場合は ChatGPT / Codex を選択してください。",
+    "No compatible Claude models are available. Check your account and API key permissions.": "対応する Claude モデルがありません。アカウントと API キーのモデル権限を確認してください。"
   }
 }

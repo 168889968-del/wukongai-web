@@ -31,6 +31,7 @@ import { useTranslation } from 'react-i18next'
 
 import { CopyButton } from '@/components/copy-button'
 import { Dialog } from '@/components/dialog'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Combobox } from '@/components/ui/combobox'
 import { Label } from '@/components/ui/label'
@@ -54,6 +55,7 @@ import {
   downloadText,
   detectOs,
   getServerAddress,
+  isClientModelCompatible,
   type ClientType,
   type OsType,
 } from './configuration'
@@ -167,6 +169,7 @@ export function QuickSetupDialog(props: QuickSetupDialogProps) {
   const modelOptions = useMemo(() => {
     const items = modelsQuery.data?.data ?? []
     return items
+      .filter((item) => isClientModelCompatible(client, item))
       .filter((item) => client !== 'codex' || !/^gpt-image-/i.test(item))
       .map((item) => ({ value: item, label: item }))
   }, [modelsQuery.data, client])
@@ -194,7 +197,9 @@ export function QuickSetupDialog(props: QuickSetupDialogProps) {
   }
 
   const handleGenerate = async () => {
-    if (selectedKeyId === null) return
+    if (selectedKeyId === null || !isClientModelCompatible(client, model)) {
+      return
+    }
     setRevealing(true)
     try {
       const res = await fetchTokenKey(selectedKeyId)
@@ -218,7 +223,9 @@ export function QuickSetupDialog(props: QuickSetupDialogProps) {
     CLIENT_OPTIONS.find((option) => option.value === client) ??
     CLIENT_OPTIONS[0]
   const files = realKey ? buildFiles(client, serverAddress, realKey, model) : []
-  const needsModel = currentClient.modelRequired && !model
+  const needsModel =
+    currentClient.modelRequired &&
+    (!model || !isClientModelCompatible(client, model))
   const usesEnvKey = client === 'grok'
   const installCommand =
     files.length > 0
@@ -277,7 +284,10 @@ export function QuickSetupDialog(props: QuickSetupDialogProps) {
                     key={option.value}
                     type='button'
                     aria-pressed={client === option.value}
-                    onClick={() => setClient(option.value)}
+                    onClick={() => {
+                      setClient(option.value)
+                      setModel('')
+                    }}
                     className={cn(
                       'flex items-center gap-3 rounded-2xl border px-4 py-3 text-left transition',
                       client === option.value
@@ -309,7 +319,10 @@ export function QuickSetupDialog(props: QuickSetupDialogProps) {
                     type='button'
                     aria-pressed={client === option.value}
                     title={t(option.hint)}
-                    onClick={() => setClient(option.value)}
+                    onClick={() => {
+                      setClient(option.value)
+                      setModel('')
+                    }}
                     className={cn(
                       'rounded-full border px-3 py-1 transition',
                       client === option.value
@@ -366,6 +379,15 @@ export function QuickSetupDialog(props: QuickSetupDialogProps) {
             </section>
 
             <section className='space-y-2.5'>
+              {client === 'claude' && (
+                <Alert className='border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30'>
+                  <AlertDescription className='text-amber-900 dark:text-amber-200'>
+                    {t(
+                      'Claude Desktop only supports Claude models. To use GPT models, choose ChatGPT / Codex.'
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
               <Label htmlFor='quick-setup-model'>
                 {currentClient.modelRequired
                   ? t('3. 选择模型（必填）')
@@ -378,18 +400,20 @@ export function QuickSetupDialog(props: QuickSetupDialogProps) {
                 value={model}
                 onValueChange={(value) => setModel(value ?? '')}
                 placeholder={t('选择或输入模型名称，例如 Grok、DeepSeek 等')}
-                emptyText={t('没有找到模型')}
+                emptyText={
+                  client === 'claude'
+                    ? t(
+                        'No compatible Claude models are available. Check your account and API key permissions.'
+                      )
+                    : t('没有找到模型')
+                }
               />
             </section>
 
             {!realKey ? (
               <Button
                 className='h-11 w-full rounded-full bg-sky-500 text-base font-semibold text-white hover:bg-sky-600'
-                disabled={
-                  selectedKeyId === null ||
-                  revealing ||
-                  (windowsTool && currentClient.modelRequired && !model)
-                }
+                disabled={selectedKeyId === null || revealing || needsModel}
                 onClick={handleGenerate}
               >
                 {revealing ? (

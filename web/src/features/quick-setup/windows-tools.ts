@@ -1,4 +1,5 @@
 import codexDesktopRunner from './codex-desktop.ps1?raw'
+import { isClientModelCompatible } from './configuration'
 import graphicalDesktopRunner from './desktop-clients.ps1?raw'
 import desktopReleases from './desktop-releases.json?raw'
 import imageCli from './imagegen/image_gen.py?raw'
@@ -34,6 +35,15 @@ export function buildWindowsTool(
   }
   if (mode === 'setup' && (!config?.base || !config.key || !config.model)) {
     throw new Error('Select a key and model before downloading')
+  }
+  if (
+    mode === 'setup' &&
+    config &&
+    !isClientModelCompatible(client, config.model)
+  ) {
+    throw new Error(
+      'Claude Desktop only supports Claude models. To use GPT models, choose ChatGPT / Codex.'
+    )
   }
   const payload =
     mode === 'setup' ? { client, mode, ...config } : { client, mode }
