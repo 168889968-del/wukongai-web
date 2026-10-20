@@ -107,7 +107,6 @@ export function buildFiles(
     const toml = [
       'model_provider = "wukongai"',
       `model = "${model}"`,
-      'model_reasoning_effort = "high"',
       '',
       '[model_providers.wukongai]',
       'name = "WukongAi"',
