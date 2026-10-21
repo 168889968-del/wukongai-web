@@ -1,3 +1,5 @@
+import { buildMacTool, isMacClient } from './mac-tools'
+
 export type ClientType =
   | 'codex'
   | 'claude'
@@ -106,11 +108,11 @@ export function buildFiles(
   if (client === 'codex') {
     const toml = [
       'model_provider = "wukongai"',
-      `model = "${model}"`,
+      `model = ${JSON.stringify(model)}`,
       '',
       '[model_providers.wukongai]',
       'name = "WukongAi"',
-      `base_url = "${base}/v1"`,
+      `base_url = ${JSON.stringify(`${base}/v1`)}`,
       'wire_api = "responses"',
       'requires_openai_auth = true',
       '',
@@ -168,6 +170,27 @@ export function buildInstallCommand(
   apiKeyEnv?: string
 ): string {
   if (os === 'mac') {
+    if (files[0]?.dir === '.claude') {
+      const env = JSON.parse(files[0].content).env
+      return buildMacTool('claude', 'setup', {
+        base: env.ANTHROPIC_BASE_URL,
+        key: env.ANTHROPIC_AUTH_TOKEN,
+        model: env.ANTHROPIC_MODEL,
+      })
+    }
+    if (files[0]?.dir === '.codex') {
+      const text = files[0].content
+      const baseLine = text.match(/^base_url = (.+)$/m)?.[1]
+      const modelLine = text.match(/^model = (.+)$/m)?.[1]
+      if (!baseLine || !modelLine) {
+        throw new Error('Invalid Codex configuration')
+      }
+      return buildMacTool('codex', 'setup', {
+        base: JSON.parse(baseLine).replace(/\/v1$/, ''),
+        key: JSON.parse(files[1].content).OPENAI_API_KEY,
+        model: JSON.parse(modelLine),
+      })
+    }
     const parts = files.map((file) => {
       const path = `~/${file.dir}/${file.fileName}`
       return [
@@ -242,6 +265,9 @@ export function buildRestoreCommand(
 
 /** Restore command for a client; needs no key because it only renames backups */
 export function getRestoreCommand(client: ClientType, os: OsType): string {
+  if (os === 'mac' && isMacClient(client)) {
+    return buildMacTool(client, 'restore')
+  }
   const files = buildFiles(
     client,
     'https://example.invalid',

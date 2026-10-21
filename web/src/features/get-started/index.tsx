@@ -41,6 +41,7 @@ import {
   type ClientType,
   type OsType,
 } from '@/features/quick-setup/configuration'
+import { downloadMacTool, isMacClient } from '@/features/quick-setup/mac-tools'
 import { QuickSetupDialog } from '@/features/quick-setup/quick-setup-dialog'
 import {
   downloadWindowsTool,
@@ -254,6 +255,18 @@ export function GetStarted() {
     setStep(2)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
+  const downloadableTool =
+    (os === 'windows' && isWindowsClient(client)) ||
+    (os === 'mac' && isMacClient(client))
+  let downloadedInstruction =
+    '打开浏览器下载列表，双击 BAT：自动安装桌面端，选择默认服务“悟空Ai”，粘贴 API 密钥即可接入。安装时如弹出 Windows 管理员授权框，请允许安装。'
+  if (installDownloaded.endsWith('.command')) {
+    downloadedInstruction =
+      '在终端输入 bash 和一个空格，把下载的 .command 文件拖入终端，再按回车运行。安装完成后继续下一步配置。'
+  } else if (installDownloaded.endsWith('-images.bat')) {
+    downloadedInstruction =
+      '打开下载列表，双击 BAT，输入支持 gpt-image-2 的悟空Ai密钥，即可配置 API 生图。完成后重新打开 Codex 聊天。'
+  }
 
   return (
     <PublicLayout showMainContainer={false}>
@@ -338,15 +351,21 @@ export function GetStarted() {
                   >
                     已经装好，下一步 <ArrowRight className='ml-1.5 size-4' />
                   </Button>
-                  {os === 'windows' && isWindowsClient(client) ? (
+                  {downloadableTool ? (
                     <Button
                       variant='outline'
                       className='rounded-full px-6'
-                      onClick={() =>
-                        setInstallDownloaded(
-                          downloadWindowsTool(client, 'install')
-                        )
-                      }
+                      onClick={() => {
+                        if (os === 'mac' && isMacClient(client)) {
+                          setInstallDownloaded(
+                            downloadMacTool(client, 'install')
+                          )
+                        } else if (isWindowsClient(client)) {
+                          setInstallDownloaded(
+                            downloadWindowsTool(client, 'install')
+                          )
+                        }
+                      }}
                     >
                       <Download className='mr-1.5 size-4' />
                       还没有，去下载
@@ -373,10 +392,7 @@ export function GetStarted() {
                     role='status'
                     className='mt-4 text-center text-sm text-sky-600'
                   >
-                    已发起下载 {installDownloaded}。
-                    {installDownloaded.endsWith('-images.bat')
-                      ? '打开下载列表，双击 BAT，输入支持 gpt-image-2 的悟空Ai密钥，即可配置 API 生图。完成后重新打开 Codex 聊天。'
-                      : '打开浏览器下载列表，双击 BAT：自动安装桌面端，选择默认服务“悟空Ai”，粘贴 API 密钥即可接入。安装时如弹出 Windows 管理员授权框，请允许安装。'}
+                    已发起下载 {installDownloaded}。{downloadedInstruction}
                   </p>
                 )}
                 {client === 'codex' && os === 'windows' && (

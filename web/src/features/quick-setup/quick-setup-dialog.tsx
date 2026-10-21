@@ -58,6 +58,7 @@ import {
   type ClientType,
   type OsType,
 } from './configuration'
+import { downloadMacTool, isMacClient } from './mac-tools'
 import { downloadWindowsTool, isWindowsClient } from './windows-tools'
 
 interface CodeBlockProps {
@@ -130,12 +131,24 @@ export function QuickSetupDialog(props: QuickSetupDialogProps) {
   const [showManual, setShowManual] = useState(false)
   const [downloadedFile, setDownloadedFile] = useState('')
   const windowsTool = os === 'windows' && isWindowsClient(client)
+  const macTool = os === 'mac' && isMacClient(client)
+  const desktopTool = windowsTool || macTool
 
   useEffect(() => {
     setDownloadedFile('')
   }, [client, os, model, selectedKeyId])
 
   const handleDownloadTool = (key: string) => {
+    if (macTool && isMacClient(client)) {
+      setDownloadedFile(
+        downloadMacTool(client, 'setup', {
+          base: getServerAddress(),
+          key,
+          model,
+        })
+      )
+      return
+    }
     if (!isWindowsClient(client)) return
     setDownloadedFile(
       downloadWindowsTool(client, 'setup', {
@@ -209,7 +222,7 @@ export function QuickSetupDialog(props: QuickSetupDialogProps) {
       const key = res.data.key
       const normalizedKey = key.startsWith('sk-') ? key : `sk-${key}`
       setRealKey(normalizedKey)
-      if (windowsTool) handleDownloadTool(normalizedKey)
+      if (desktopTool) handleDownloadTool(normalizedKey)
     } catch (error) {
       handleServerError(error, t('获取密钥失败，请稍后重试'))
     } finally {
@@ -227,7 +240,7 @@ export function QuickSetupDialog(props: QuickSetupDialogProps) {
     (!model || !isClientModelCompatible(client, model))
   const usesEnvKey = client === 'grok'
   const installCommand =
-    files.length > 0
+    files.length > 0 && !desktopTool
       ? buildInstallCommand(os, files, usesEnvKey ? realKey : undefined)
       : ''
   const restoreCommand =
@@ -411,16 +424,20 @@ export function QuickSetupDialog(props: QuickSetupDialogProps) {
                 ) : (
                   <Sparkles className='mr-2 size-4' />
                 )}
-                {windowsTool ? t('Download setup tool') : t('生成配置')}
+                {desktopTool ? t('Download setup tool') : t('生成配置')}
               </Button>
             ) : (
               <section className='space-y-3'>
-                {windowsTool && (
+                {desktopTool && (
                   <div className='space-y-4 rounded-2xl border border-sky-100 bg-sky-50/60 p-4 dark:border-sky-900 dark:bg-sky-950/30'>
                     <p className='text-sm font-medium'>
-                      {t(
-                        'Download and double-click the BAT file to install and configure the client.'
-                      )}
+                      {macTool
+                        ? t(
+                            'On Mac, type bash and a space in Terminal, drag the downloaded .command file into it, then press Enter.'
+                          )
+                        : t(
+                            'Download and double-click the BAT file to install and configure the client.'
+                          )}
                     </p>
                     <p className='text-muted-foreground text-sm'>
                       {t(
@@ -440,8 +457,10 @@ export function QuickSetupDialog(props: QuickSetupDialogProps) {
                         variant='outline'
                         className='rounded-full'
                         onClick={() =>
-                          isWindowsClient(client) &&
-                          downloadWindowsTool(client, 'restore')
+                          macTool && isMacClient(client)
+                            ? downloadMacTool(client, 'restore')
+                            : isWindowsClient(client) &&
+                              downloadWindowsTool(client, 'restore')
                         }
                       >
                         <RotateCcw className='mr-1.5 size-4' />
@@ -450,9 +469,14 @@ export function QuickSetupDialog(props: QuickSetupDialogProps) {
                     </div>
                     {downloadedFile && (
                       <p className='text-sm break-all text-emerald-700 dark:text-emerald-400'>
-                        {t('Downloaded: {{file}}. Double-click it to run.', {
-                          file: downloadedFile,
-                        })}
+                        {t(
+                          macTool
+                            ? 'Downloaded: {{file}}. Run it in Terminal with bash.'
+                            : 'Downloaded: {{file}}. Double-click it to run.',
+                          {
+                            file: downloadedFile,
+                          }
+                        )}
                       </p>
                     )}
                     <p className='text-muted-foreground text-xs leading-5'>
@@ -462,7 +486,7 @@ export function QuickSetupDialog(props: QuickSetupDialogProps) {
                     </p>
                   </div>
                 )}
-                {!windowsTool && (
+                {!desktopTool && (
                   <>
                     {needsModel && (
                       <p className='rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800'>

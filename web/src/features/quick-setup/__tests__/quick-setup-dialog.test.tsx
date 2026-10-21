@@ -5,6 +5,7 @@ import { createInstance } from 'i18next'
 import { I18nextProvider } from 'react-i18next'
 import { afterEach, expect, it, vi } from 'vitest'
 
+import { fetchTokenKey } from '@/features/keys/api'
 import zh from '@/i18n/locales/zh.json'
 import { getUserModels } from '@/lib/api'
 
@@ -30,7 +31,10 @@ vi.mock('@/features/keys/components/dialogs/cc-switch-dialog', () => ({
 
 afterEach(cleanup)
 
-async function showClaudeSetup(models: string[]) {
+async function showClaudeSetup(
+  models: string[],
+  initialOs: 'windows' | 'mac' = 'windows'
+) {
   vi.mocked(getUserModels).mockResolvedValue({ success: true, data: models })
   const i18n = createInstance()
   await i18n.init({
@@ -50,7 +54,7 @@ async function showClaudeSetup(models: string[]) {
           open
           onOpenChange={vi.fn()}
           initialClient='claude'
-          initialOs='windows'
+          initialOs={initialOs}
         />
       </I18nextProvider>
     </QueryClientProvider>
@@ -80,4 +84,39 @@ it('explains why no compatible model is available and prevents a download', asyn
       '暂无兼容的 Claude 模型，请检查账号和 API 密钥的模型权限。'
     )
   ).toBeVisible()
+})
+
+it('downloads a Mac desktop setup file and exposes a Mac restore file', async () => {
+  const create = vi
+    .spyOn(URL, 'createObjectURL')
+    .mockReturnValue('blob:mac-tool')
+  const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+  const click = vi
+    .spyOn(HTMLAnchorElement.prototype, 'click')
+    .mockImplementation(() => {})
+  vi.mocked(fetchTokenKey).mockResolvedValue({
+    success: true,
+    data: { key: 'sk-test-only' },
+  })
+  localStorage.setItem(
+    'status',
+    JSON.stringify({ server_address: 'https://example.invalid' })
+  )
+  try {
+    const user = await showClaudeSetup(['claude-test'], 'mac')
+    await user.click(screen.getByRole('combobox', { name: '模型' }))
+    await user.click(await screen.findByRole('option', { name: 'claude-test' }))
+    await user.click(screen.getByRole('button', { name: '下载配置工具' }))
+    expect(
+      await screen.findByText(/wukongai-claude-setup.command/)
+    ).toBeVisible()
+    expect(screen.getByText(/Mac：在终端输入 bash/)).toBeVisible()
+    await user.click(screen.getByRole('button', { name: '下载切回官方版工具' }))
+    expect(click).toHaveBeenCalledTimes(2)
+  } finally {
+    create.mockRestore()
+    revoke.mockRestore()
+    click.mockRestore()
+    localStorage.removeItem('status')
+  }
 })

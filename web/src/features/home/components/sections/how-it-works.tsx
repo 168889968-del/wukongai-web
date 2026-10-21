@@ -12,6 +12,7 @@ import {
   type ClientType,
   type OsType,
 } from '@/features/quick-setup/configuration'
+import { downloadMacTool, isMacClient } from '@/features/quick-setup/mac-tools'
 import {
   downloadWindowsTool,
   isWindowsClient,
@@ -66,15 +67,21 @@ export function HowItWorks() {
   const installCommand = INSTALL_COMMANDS[client]?.[os] ?? ''
   const terminalName = os === 'mac' ? '终端' : 'PowerShell'
   const windowsTool = os === 'windows' && isWindowsClient(client)
+  const macTool = os === 'mac' && isMacClient(client)
+  const desktopTool = windowsTool || macTool
   let restoreDescription = `${current.hint} 的服务商是在它自己的设置页面里添加的，删掉悟空Ai这一项即可。`
   if (restoreCommand) {
     restoreDescription = `把 ${current.hint} 恢复成接入前的设置，不影响你的账号和历史会话。`
   }
   let restoreLabel = showRestore ? t('收起恢复命令') : t('查看恢复命令')
-  if (windowsTool) {
-    restoreDescription = t(
-      'Download the restore BAT file to recover your configuration from before connecting to WukongAi.'
-    )
+  if (desktopTool) {
+    restoreDescription = macTool
+      ? t(
+          'On Mac, type bash and a space in Terminal, drag the downloaded .command file into it, then press Enter.'
+        )
+      : t(
+          'Download the restore BAT file to recover your configuration from before connecting to WukongAi.'
+        )
     restoreLabel = t('Download official restore tool')
   }
   const endpoint =
@@ -185,7 +192,7 @@ export function HowItWorks() {
                     onClick={() => setDialogOpen(true)}
                   >
                     <Download className='mr-1.5 size-4' />
-                    {windowsTool ? t('Download setup tool') : t('生成配置命令')}
+                    {desktopTool ? t('Download setup tool') : t('生成配置命令')}
                   </Button>
                 ) : (
                   <Button
@@ -214,9 +221,11 @@ export function HowItWorks() {
                   <Button
                     variant='outline'
                     className='h-10 rounded-full'
-                    aria-expanded={windowsTool ? undefined : showRestore}
+                    aria-expanded={desktopTool ? undefined : showRestore}
                     onClick={() => {
-                      if (windowsTool && isWindowsClient(client)) {
+                      if (macTool && isMacClient(client)) {
+                        downloadMacTool(client, 'restore')
+                      } else if (windowsTool && isWindowsClient(client)) {
                         downloadWindowsTool(client, 'restore')
                       } else setShowRestore((value) => !value)
                     }}
@@ -224,7 +233,7 @@ export function HowItWorks() {
                     <RotateCcw className='mr-1.5 size-4' />
                     {restoreLabel}
                   </Button>
-                  {showRestore && !windowsTool && (
+                  {showRestore && !desktopTool && (
                     <div className='mt-3 flex items-start gap-2 rounded-xl bg-slate-950 p-3'>
                       <pre className='min-w-0 flex-1 overflow-x-auto text-xs leading-5 text-sky-100'>
                         <code>{restoreCommand}</code>
@@ -244,7 +253,7 @@ export function HowItWorks() {
             </article>
           </div>
 
-          {installCommand && !windowsTool && (
+          {installCommand && !desktopTool && (
             <div className='flex flex-wrap items-center gap-3 rounded-2xl border border-dashed border-slate-300 px-4 py-3 dark:border-slate-700'>
               <span className='flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400'>
                 <Terminal className='size-4 text-sky-500' aria-hidden='true' />

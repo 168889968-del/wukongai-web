@@ -7310,6 +7310,8 @@
     "Downloaded: {{file}}. Double-click it to run.": "已下载 {{file}}，请双击运行。",
     "The setup file contains your API key. Keep it private.": "配置工具包含你的 API 密钥，请勿分享给他人。",
     "Claude Desktop only supports Claude models. To use GPT models, choose ChatGPT / Codex.": "Claude 桌面版仅支持 Claude 模型，不能配置 GPT、Grok 或 DeepSeek。要使用 GPT，请选择「ChatGPT / Codex」客户端。",
-    "No compatible Claude models are available. Check your account and API key permissions.": "暂无兼容的 Claude 模型，请检查账号和 API 密钥的模型权限。"
+    "No compatible Claude models are available. Check your account and API key permissions.": "暂无兼容的 Claude 模型，请检查账号和 API 密钥的模型权限。",
+    "On Mac, type bash and a space in Terminal, drag the downloaded .command file into it, then press Enter.": "Mac：在终端输入 bash 和一个空格，把下载的 .command 文件拖入终端，再按回车运行。",
+    "Downloaded: {{file}}. Run it in Terminal with bash.": "已下载：{{file}}。请在终端使用 bash 运行。"
   }
 }
