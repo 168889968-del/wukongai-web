@@ -4,22 +4,6 @@ import { fileURLToPath } from 'node:url'
 import { brotliCompressSync, constants, gzipSync } from 'node:zlib'
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url))
-const entry = path.join(dist, 'index.html')
-let html = await readFile(entry, 'utf8')
-let stylesheets = 0
-html = html.replaceAll(/<link\b[^>]*rel="stylesheet"[^>]*>/g, (tag) => {
-  stylesheets++
-  // The small inline shell renders while the application CSS loads. Reveal
-  // React only after both its route and styles are ready, avoiding a flash.
-  return (
-    tag.replace(
-      'rel="stylesheet"',
-      'rel="preload" as="style" data-app-stylesheet onload="this.onload=null;this.rel=\'stylesheet\';document.documentElement.setAttribute(\'data-app-styles-ready\',\'true\')"'
-    ) + `<noscript>${tag}</noscript>`
-  )
-})
-if (stylesheets !== 1) throw new Error('Expected one application stylesheet')
-await writeFile(entry, html)
 
 let files = 0
 async function compress(directory) {
@@ -40,4 +24,4 @@ async function compress(directory) {
   }
 }
 await compress(path.join(dist, 'static'))
-console.log(`Prepared nonblocking stylesheet and ${files} compressed assets`)
+console.log(`Prepared ${files} compressed assets`)
