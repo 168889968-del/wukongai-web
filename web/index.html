@@ -8,17 +8,136 @@
     <!-- Primary Meta Tags -->
     <title>悟空Ai</title>
     <meta name="title" content="悟空Ai" />
-    <meta
-      name="description"
-      content="悟空Ai · 大模型 API 中转与管理平台"
-    />
+    <meta name="description" content="悟空Ai · 大模型 API 中转与管理平台" />
 
     <meta name="theme-color" content="#fff" />
+    <style>
+      html:not([data-app-ready='true']) {
+        background: #f8fbff;
+      }
+      html:not([data-app-ready='true']) #root {
+        visibility: hidden;
+      }
+      #startup-shell {
+        box-sizing: border-box;
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 28px 24px;
+        color: #162238;
+        font:
+          16px/1.7 system-ui,
+          -apple-system,
+          'Microsoft YaHei',
+          sans-serif;
+      }
+      #startup-shell header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+      }
+      #startup-shell strong {
+        font-size: 21px;
+      }
+      #startup-shell a {
+        color: #0879c8;
+        text-decoration: none;
+      }
+      #startup-shell main {
+        padding: 70px 0 35px;
+      }
+      #startup-shell h1 {
+        margin: 0 0 16px;
+        font-size: clamp(30px, 7vw, 46px);
+        line-height: 1.3;
+      }
+      #startup-shell p {
+        color: #53647c;
+      }
+      #startup-shell nav {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 26px;
+      }
+      #startup-shell nav a {
+        padding: 10px 20px;
+        border: 1px solid #b8d9f3;
+        border-radius: 24px;
+        background: white;
+      }
+      #startup-shell nav a:first-child {
+        color: white;
+        background: #087fca;
+        border-color: #087fca;
+      }
+      #startup-shell [role='status'] {
+        font-size: 14px;
+        margin-top: 36px;
+      }
+      #startup-shell button {
+        cursor: pointer;
+        padding: 8px 18px;
+        border: 1px solid #b8d9f3;
+        border-radius: 20px;
+        background: white;
+        color: #0879c8;
+        font: inherit;
+      }
+    </style>
     <!--umami-->
     <!--Google Analytics-->
   </head>
 
   <body>
+    <section id="startup-shell" aria-label="悟空Ai">
+      <header><strong>悟空Ai</strong><a href="/sign-in">登录</a></header>
+      <main>
+        <h1>多种 AI 模型<br />一个入口接入</h1>
+        <p>
+          ChatGPT、Claude、Grok、DeepSeek<br />按量计费，调用与消费记录随时可查。
+        </p>
+        <nav aria-label="快速入口">
+          <a href="/get-started">开始接入</a><a href="/pricing">查看模型价格</a>
+        </nav>
+        <p role="status" id="startup-status">正在加载完整页面，请稍候…</p>
+        <button id="startup-retry" type="button" hidden>重新加载</button>
+        <noscript><p>请启用 JavaScript 后刷新页面。</p></noscript>
+      </main>
+    </section>
     <div id="root" translate="no" class="notranslate"></div>
+    <script id="startup-script">
+      ;(function () {
+        var shell = document.getElementById('startup-shell')
+        var root = document.getElementById('root')
+        var retry = document.getElementById('startup-retry')
+        retry.onclick = function () {
+          window.location.reload()
+        }
+        var timer = window.setTimeout(function () {
+          document.getElementById('startup-status').textContent =
+            '当前网络较慢，请稍候或重新加载。'
+          retry.hidden = false
+        }, 15000)
+        var observer = new MutationObserver(function () {
+          var stylesReady =
+            !document.querySelector('link[data-app-stylesheet]') ||
+            document.documentElement.getAttribute('data-app-styles-ready') ===
+              'true'
+          if (root.childNodes.length && stylesReady) {
+            observer.disconnect()
+            window.clearTimeout(timer)
+            document.documentElement.setAttribute('data-app-ready', 'true')
+            shell.remove()
+          }
+        })
+        observer.observe(document.documentElement, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ['data-app-styles-ready'],
+        })
+      })()
+    </script>
   </body>
 </html>

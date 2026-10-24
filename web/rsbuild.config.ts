@@ -90,7 +90,16 @@ export default defineConfig(({ envMode }) => {
     tools: {
       rspack: {
         module: {
-          rules: [{ resourceQuery: /raw/, type: 'asset/source' }],
+          rules: [
+            { resourceQuery: /raw/, type: 'asset/source' },
+            {
+              test: /[\\/]i18n[\\/]locales[\\/]en\.json$/,
+              type: 'javascript/auto',
+              use: [
+                path.resolve(__dirname, 'scripts/compact-english-loader.cjs'),
+              ],
+            },
+          ],
         },
         plugins: [
           tanstackRouter({
